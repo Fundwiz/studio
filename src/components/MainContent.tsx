@@ -13,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { Option, OptionChain as OptionChainType, Index } from '@/lib/types';
 import { OptionChainChart } from './OptionChainChart';
+import { OpenInterestChart } from './OpenInterestChart';
 import { MaxPainChart } from './MaxPainChart';
 
 const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
@@ -93,7 +94,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                 <ScrollArea className="h-[600px] w-full rounded-md border" ref={scrollAreaRef} type="always">
+                 <ScrollArea className="w-full rounded-md border" ref={scrollAreaRef} type="always">
                     <Table className="min-w-[1200px]">
                         <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
                             <TableRow>
@@ -122,9 +123,16 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 const isClosest = item.strike === closestStrike;
                                 const callITM = item.call ? item.strike < underlyingPrice : false;
                                 const putITM = item.put ? item.strike > underlyingPrice : false;
+                                
+                                const getCellClass = (isCall: boolean) => {
+                                    if (isClosest) return "bg-accent/20";
+                                    if (isCall && callITM) return "bg-green-900/50";
+                                    if (!isCall && putITM) return "bg-red-900/50";
+                                    return "";
+                                };
 
-                                const callBgClass = isClosest ? "bg-accent/20" : callITM ? "bg-green-900/50" : "";
-                                const putBgClass = isClosest ? "bg-accent/20" : putITM ? "bg-red-900/50" : "";
+                                const callBgClass = getCellClass(true);
+                                const putBgClass = getCellClass(false);
                                 const neutralBgClass = isClosest ? "bg-accent/20" : "";
 
                                 const callLtpChanged = item.call && item.call.ltp !== item.call.prevLtp && item.call.prevLtp !== undefined;
@@ -159,7 +167,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         <TableCell className={cn('p-2', item.call && item.call.chng >= 0 ? "text-green-400" : "text-red-400", callBgClass)}>
                                             {item.call ? item.call.chng.toFixed(2) : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2 transition-colors duration-200', callLtpFlashClass || callBgClass)}>
+                                        <TableCell className={cn('p-2 transition-colors duration-200', callLtpFlashClass, callBgClass)}>
                                             {item.call ? `₹${item.call.ltp.toFixed(2)}` : '-'}
                                         </TableCell>
 
@@ -175,7 +183,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         </TableCell>
 
                                         {/* Put Data */}
-                                        <TableCell className={cn('p-2 text-right transition-colors duration-200', putLtpFlashClass || putBgClass)}>
+                                        <TableCell className={cn('p-2 text-right transition-colors duration-200', putLtpFlashClass, putBgClass)}>
                                             {item.put ? `₹${item.put.ltp.toFixed(2)}` : '-'}
                                         </TableCell>
                                         <TableCell className={cn('p-2 text-right', item.put && item.put.chng >= 0 ? "text-green-400" : "text-red-400", putBgClass)}>
@@ -195,6 +203,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                             })}
                         </TableBody>
                     </Table>
+                    <ScrollBar orientation="horizontal" />
                 </ScrollArea>
             </CardContent>
         </Card>
@@ -220,6 +229,7 @@ export function MainContent({ indices, optionChain, maxPainHistory }: MainConten
             <StockList stocks={indices} />
           </CardContent>
         </Card>
+        <OpenInterestChart optionChain={optionChain} />
         <OptionChainChart optionChain={optionChain} />
         <MaxPainChart optionChain={optionChain} maxPainHistory={maxPainHistory} />
         <OptionChainTable optionChain={optionChain} />
