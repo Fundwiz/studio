@@ -16,8 +16,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { Option, OptionChain as OptionChainType, Index } from '@/lib/types';
+import { OptionChainChart } from './OptionChainChart';
 
-const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) => {
+const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
     if (!optionChain || (optionChain.calls.length === 0 && optionChain.puts.length === 0)) {
         return (
             <Card>
@@ -180,7 +181,8 @@ export function MainContent({ indices, optionChain }: MainContentProps) {
             <StockList stocks={indices} />
           </CardContent>
         </Card>
-        <OptionChain optionChain={optionChain} />
+        <OptionChainChart optionChain={optionChain} />
+        <OptionChainTable optionChain={optionChain} />
       </div>
       <div className="lg:col-span-1">
           <MarketSentimentAnalyzer />

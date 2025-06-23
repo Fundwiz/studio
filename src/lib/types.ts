@@ -13,6 +13,7 @@ export type Option = {
     ltp: number;
     chng: number;
     oi: number;
+    chngInOI?: number;
     volume: number;
     bid: number;
     ask: number;
@@ -40,6 +41,7 @@ export interface RawOptionData {
     last: number; // ltp
     change: number; // chng
     OI: number; // oi
+    chngInOI?: number;
     ttq: number; // volume
     bPrice: number; // bid
     sPrice: number; // ask
