@@ -59,8 +59,8 @@ export function OptionChainChart({
 }: {
   optionChain: OptionChain | null;
 }) {
-  const { chartData, resistance, support } = useMemo(() => {
-    if (!optionChain) return { chartData: [], resistance: 0, support: 0 };
+  const { chartData, resistance1, resistance2, support1, support2 } = useMemo(() => {
+    if (!optionChain) return { chartData: [], resistance1: 0, resistance2: 0, support1: 0, support2: 0 };
 
     const { calls, puts } = optionChain;
     const strikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])].sort((a, b) => a - b);
@@ -83,11 +83,16 @@ export function OptionChainChart({
       };
     });
 
-    const resistance = processedData.reduce((max, d) => d.callTotalOi > max.callTotalOi ? d : max, { callTotalOi: -1, strike: 0 }).strike;
-    const support = processedData.reduce((max, d) => d.putTotalOi > max.putTotalOi ? d : max, { putTotalOi: -1, strike: 0 }).strike;
+    // Sort by OI to find top 2 for support and resistance
+    const callsByOi = [...processedData].sort((a, b) => b.callTotalOi - a.callTotalOi);
+    const putsByOi = [...processedData].sort((a, b) => b.putTotalOi - a.putTotalOi);
+
+    const resistance1 = callsByOi[0]?.strike ?? 0;
+    const resistance2 = callsByOi[1]?.strike ?? 0;
+    const support1 = putsByOi[0]?.strike ?? 0;
+    const support2 = putsByOi[1]?.strike ?? 0;
     
-    // Return all data to ensure support/resistance is always visible
-    return { chartData: processedData, resistance, support };
+    return { chartData: processedData, resistance1, resistance2, support1, support2 };
 
   }, [optionChain]);
 
@@ -188,33 +193,41 @@ export function OptionChainChart({
               />
 
               <ReferenceLine
-                x={support}
+                yAxisId="left"
+                x={support1}
                 stroke={chartConfig.support.color}
                 strokeDasharray="4 4"
                 ifOverflow="visible"
-                yAxisId="left"
-                label={{
-                    value: `Support`,
-                    position: 'insideTopLeft',
-                    fill: chartConfig.support.color,
-                    fontSize: 12,
-                }}
+                label={{ value: `S1`, position: 'insideTopLeft', fill: chartConfig.support.color, fontSize: 12 }}
               />
               <ReferenceLine
-                x={resistance}
+                yAxisId="left"
+                x={support2}
+                stroke={chartConfig.support.color}
+                strokeDasharray="2 6"
+                ifOverflow="visible"
+                label={{ value: `S2`, position: 'insideTopLeft', dy: 15, fill: chartConfig.support.color, fontSize: 12 }}
+              />
+               <ReferenceLine
+                yAxisId="left"
+                x={resistance1}
                 stroke={chartConfig.resistance.color}
                 strokeDasharray="4 4"
                 ifOverflow="visible"
-                yAxisId="left"
-                label={{
-                    value: `Resistance`,
-                    position: 'insideTopRight',
-                    fill: chartConfig.resistance.color,
-                    fontSize: 12,
-                }}
+                label={{ value: `R1`, position: 'insideTopRight', fill: chartConfig.resistance.color, fontSize: 12 }}
               />
-               <Line yAxisId="left" dataKey="dummySupport" name={`Support @ ${support}`} stroke={chartConfig.support.color} strokeDasharray="3 3" visibility="hidden" />
-               <Line yAxisId="left" dataKey="dummyResistance" name={`Resistance @ ${resistance}`} stroke={chartConfig.resistance.color} strokeDasharray="3 3" visibility="hidden" />
+              <ReferenceLine
+                yAxisId="left"
+                x={resistance2}
+                stroke={chartConfig.resistance.color}
+                strokeDasharray="2 6"
+                ifOverflow="visible"
+                label={{ value: `R2`, position: 'insideTopRight', dy: 15, fill: chartConfig.resistance.color, fontSize: 12 }}
+              />
+              <Line yAxisId="left" dataKey="dummyS1" name={`Support 1 @ ${support1}`} stroke={chartConfig.support.color} strokeDasharray="4 4" visibility="hidden" />
+              <Line yAxisId="left" dataKey="dummyS2" name={`Support 2 @ ${support2}`} stroke={chartConfig.support.color} strokeDasharray="2 6" visibility="hidden" />
+              <Line yAxisId="left" dataKey="dummyR1" name={`Resistance 1 @ ${resistance1}`} stroke={chartConfig.resistance.color} strokeDasharray="4 4" visibility="hidden" />
+              <Line yAxisId="left" dataKey="dummyR2" name={`Resistance 2 @ ${resistance2}`} stroke={chartConfig.resistance.color} strokeDasharray="2 6" visibility="hidden" />
             </ComposedChart>
           </ResponsiveContainer>
         </ChartContainer>
