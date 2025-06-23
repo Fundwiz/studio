@@ -65,6 +65,24 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
         ).strike;
     }
 
+    const renderLtpCell = (option: Option | undefined, call: boolean) => {
+        if (!option) return <TableCell className={cn('p-2', call ? '' : 'text-right')}>-</TableCell>;
+        
+        const priceChanged = option.ltp !== option.prevLtp && option.prevLtp !== undefined;
+        const priceIncreased = option.ltp > (option.prevLtp ?? 0);
+
+        return (
+            <TableCell className={cn(
+                'p-2 transition-colors duration-200',
+                call ? '' : 'text-right',
+                call ? (option.strike < underlyingPrice && "bg-green-900/40") : (option.strike > underlyingPrice && "bg-red-900/40"),
+                priceChanged && (priceIncreased ? 'bg-green-500/50' : 'bg-red-500/50')
+            )}>
+                {option ? `₹${option.ltp.toFixed(2)}` : '-'}
+            </TableCell>
+        );
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -115,9 +133,7 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
                                         <TableCell className={cn('p-2', callITM && "bg-green-900/40", item.call && item.call.chng >= 0 ? "text-green-400" : "text-red-400")}>
                                             {item.call ? item.call.chng.toFixed(2) : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
-                                            {item.call ? `₹${item.call.ltp.toFixed(2)}` : '-'}
-                                        </TableCell>
+                                        {renderLtpCell(item.call, true)}
 
                                         {/* Strike Price */}
                                         <TableCell className="font-bold text-center p-2 bg-card border-l border-r">
@@ -125,9 +141,7 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
                                         </TableCell>
 
                                         {/* Put Data */}
-                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
-                                            {item.put ? `₹${item.put.ltp.toFixed(2)}` : '-'}
-                                        </TableCell>
+                                        {renderLtpCell(item.put, false)}
                                         <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40", item.put && item.put.chng >= 0 ? "text-green-400" : "text-red-400")}>
                                             {item.put ? item.put.chng.toFixed(2) : '-'}
                                         </TableCell>

@@ -16,6 +16,7 @@ export type Option = {
     volume: number;
     bid: number;
     ask: number;
+    prevLtp?: number;
 };
 
 export type OptionChain = {
@@ -23,3 +24,24 @@ export type OptionChain = {
     puts: Option[];
     underlyingPrice: number;
 };
+
+export interface NiftyTick {
+    Timestamp: string;
+    LTP: number;
+    Change: number;
+    Open: number;
+    High: number;
+    Low: number;
+    Close: number;
+}
+
+export interface RawOptionData {
+    strike: number;
+    last: number; // ltp
+    change: number; // chng
+    OI: number; // oi
+    ttq: number; // volume
+    bPrice: number; // bid
+    sPrice: number; // ask
+    [key: string]: any;
+}

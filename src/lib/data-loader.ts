@@ -3,7 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
-import type { Index, Option, OptionChain } from '@/lib/types';
+import type { Index, Option, OptionChain, NiftyTick, RawOptionData } from '@/lib/types';
+import { transformOption } from '@/lib/utils';
 
 // A generic CSV parsing function
 function parseCSV<T>(filePath: string): Promise<T[]> {
@@ -34,17 +35,6 @@ function parseCSV<T>(filePath: string): Promise<T[]> {
 }
 
 
-// --- Nifty Tick Data Interface ---
-interface NiftyTickData {
-    Timestamp: string;
-    LTP: number;
-    Change: number;
-    Open: number;
-    High: number;
-    Low: number;
-    Close: number;
-}
-
 // Hardcoded data for other indices as they don't have CSV files
 const otherIndices: Index[] = [
   { symbol: 'NIFTY BANK', name: 'NIFTY BANK', price: 48500, change: -250.40, changePercent: -0.51, prevPrice: 48750.40 },
@@ -52,14 +42,26 @@ const otherIndices: Index[] = [
   { symbol: 'SENSEX', name: 'BSE SENSEX', price: 74000, change: 450.25, changePercent: 0.61, prevPrice: 73549.75 },
 ];
 
+export async function loadAllNiftyTicks(): Promise<NiftyTick[]> {
+    const niftyTickPath = path.join(process.cwd(), 'src', 'data', 'nifty_tick.csv');
+    return parseCSV<NiftyTick>(niftyTickPath);
+}
+export async function loadAllCallsTicks(): Promise<RawOptionData[]> {
+    const callsPath = path.join(process.cwd(), 'src', 'data', 'calls.csv');
+    return parseCSV<RawOptionData>(callsPath);
+}
+export async function loadAllPutsTicks(): Promise<RawOptionData[]> {
+    const putsPath = path.join(process.cwd(), 'src', 'data', 'puts.csv');
+    return parseCSV<RawOptionData>(putsPath);
+}
+
 
 export async function loadIndicesData(): Promise<Index[]> {
   try {
-    const niftyTickPath = path.join(process.cwd(), 'src', 'data', 'nifty_tick.csv');
-    const niftyData = await parseCSV<NiftyTickData>(niftyTickPath);
+    const niftyTicks = await loadAllNiftyTicks();
     
     // Use the last row for the most recent tick data
-    const latestTick = niftyData[niftyData.length - 1];
+    const latestTick = niftyTicks[niftyTicks.length - 1];
 
     if (!latestTick) {
         console.warn("nifty_tick.csv is empty or invalid. Using fallback data.");
@@ -95,50 +97,19 @@ export async function loadIndicesData(): Promise<Index[]> {
   }
 }
 
-// --- Option Chain Data Interface from user's CSV ---
-// OI data has following fields : LocalTime	last	high	low	change	avgPrice	OI	ttq	totalBuyQt	totalSellQ	ttv	ltt	bPrice	bQty	sPrice	sQty	ltq
-interface RawOptionData {
-    strike: number;
-    last: number; // ltp
-    change: number; // chng
-    OI: number; // oi
-    ttq: number; // volume
-    bPrice: number; // bid
-    sPrice: number; // ask
-    // Other fields from the CSV are ignored
-    [key: string]: any;
-}
-
-
 export async function loadOptionChainData(underlyingPrice: number): Promise<OptionChain | null> {
     try {
-        const callsPath = path.join(process.cwd(), 'src', 'data', 'calls.csv');
-        const putsPath = path.join(process.cwd(), 'src', 'data', 'puts.csv');
-
-        const [rawCallsData, rawPutsData] = await Promise.all([
-          parseCSV<RawOptionData>(callsPath),
-          parseCSV<RawOptionData>(putsPath)
+        const [callsTicks, putsTicks] = await Promise.all([
+          loadAllCallsTicks(),
+          loadAllPutsTicks()
         ]);
-
-        const transformOption = (o: RawOptionData): Option => ({
-            strike: o.strike || 0,
-            ltp: o.last || 0,
-            chng: o.change || 0,
-            oi: o.OI || 0,
-            volume: o.ttq || 0,
-            bid: o.bPrice || 0,
-            ask: o.sPrice || 0,
-        });
-
-        const calls = rawCallsData
-            .map(transformOption)
-            .filter(o => o.strike)
-            .sort((a,b) => a.strike - b.strike);
         
-        const puts = rawPutsData
-            .map(transformOption)
-            .filter(o => o.strike)
-            .sort((a,b) => a.strike - b.strike);
+        // Use last tick for initial state
+        const lastCallTick = callsTicks[callsTicks.length - 1];
+        const lastPutTick = putsTicks[putsTicks.length - 1];
+
+        const calls = lastCallTick ? [transformOption(lastCallTick)] : [];
+        const puts = lastPutTick ? [transformOption(lastPutTick)] : [];
         
         return {
             calls,
