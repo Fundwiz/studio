@@ -11,7 +11,6 @@ export type Index = Stock;
 export type Option = {
     strike: number;
     ltp: number;
-    iv: number;
     chng: number;
     oi: number;
     volume: number;
