@@ -13,7 +13,6 @@ export type Option = {
     ltp: number;
     iv: number;
     chng: number;
-    chngInOI: number;
     oi: number;
     volume: number;
     bid: number;

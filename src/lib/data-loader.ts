@@ -11,6 +11,7 @@ const otherIndices: Index[] = [
   { symbol: 'SENSEX', name: 'BSE SENSEX', price: 74000, change: 450.25, changePercent: 0.61, prevPrice: 73549.75 },
 ];
 
+// A generic CSV parsing function
 function parseCSV<T>(filePath: string): Promise<T[]> {
   const csvFile = fs.readFileSync(filePath, 'utf8');
   return new Promise((resolve, reject) => {
@@ -49,17 +50,45 @@ export async function loadIndicesData(): Promise<Index[]> {
   }
 }
 
+// Interface for the raw data from your custom CSV
+interface RawOptionData {
+    strike: number;
+    type: 'call' | 'put';
+    last: number; // ltp
+    iv: number;
+    change: number; // chng
+    OI: number; // oi
+    ttq: number; // volume
+    bPrice: number; // bid
+    sPrice: number; // ask
+    // Other fields from your CSV are ignored
+    [key: string]: any;
+}
+
+
 export async function loadOptionChainData(underlyingPrice: number): Promise<OptionChain | null> {
     try {
         const optionChainPath = path.join(process.cwd(), 'src', 'data', 'option_chain.csv');
-        const optionsData = await parseCSV<Option & { type: 'call' | 'put' }>(optionChainPath);
+        const rawOptionsData = await parseCSV<RawOptionData>(optionChainPath);
 
-        const calls = optionsData
+        const transformedOptions: (Option & {type: 'call' | 'put'})[] = rawOptionsData.map(o => ({
+            strike: o.strike,
+            ltp: o.last || 0,
+            iv: o.iv || 0,
+            chng: o.change || 0,
+            oi: o.OI || 0,
+            volume: o.ttq || 0,
+            bid: o.bPrice || 0,
+            ask: o.sPrice || 0,
+            type: o.type,
+        }));
+
+        const calls = transformedOptions
             .filter(o => o.type === 'call')
             .map(({ type, ...rest }) => rest)
             .sort((a,b) => a.strike - b.strike);
         
-        const puts = optionsData
+        const puts = transformedOptions
             .filter(o => o.type === 'put')
             .map(({ type, ...rest }) => rest)
             .sort((a,b) => a.strike - b.strike);

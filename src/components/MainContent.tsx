@@ -24,7 +24,6 @@ const OptionTable = ({ title, options, isCall, underlyingPrice }: { title: strin
                 <TableHeader>
                     <TableRow>
                         <TableHead className='p-2'>OI</TableHead>
-                        <TableHead className='p-2'>Chng in OI</TableHead>
                         <TableHead className='p-2'>Volume</TableHead>
                         <TableHead className='p-2'>IV</TableHead>
                         <TableHead className='p-2'>LTP</TableHead>
@@ -38,9 +37,6 @@ const OptionTable = ({ title, options, isCall, underlyingPrice }: { title: strin
                         return (
                             <TableRow key={option.strike} className={cn('text-xs', isITM && (isCall ? "bg-green-900/40" : "bg-red-900/40"))}>
                                 <TableCell className='p-2'>{(option.oi / 100000).toFixed(2)}L</TableCell>
-                                <TableCell className={cn('p-2', option.chngInOI > 0 ? "text-green-400" : "text-red-400")}>
-                                    {(option.chngInOI / 1000).toFixed(2)}K
-                                </TableCell>
                                 <TableCell className='p-2'>{(option.volume / 1000).toFixed(2)}K</TableCell>
                                 <TableCell className='p-2'>{option.iv}</TableCell>
                                 <TableCell className='p-2'>₹{option.ltp.toFixed(2)}</TableCell>
