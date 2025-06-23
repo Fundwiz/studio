@@ -20,6 +20,7 @@ import { OptionChainChart } from './OptionChainChart';
 import { OpenInterestChart } from './OpenInterestChart';
 import { MaxPainChart } from './MaxPainChart';
 import { BuySellChart } from './BuySellChart';
+import { OiChangeChart } from './OiChangeChart';
 
 const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
     const getBuildupText = (option: Option | undefined): { text: string; className: string } => {
@@ -126,16 +127,15 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 const putITM = item.put ? item.strike > underlyingPrice : false;
                                 
                                 const getCellClass = (isCall: boolean) => {
-                                    if (isClosest) return "bg-accent/20";
-                                    if (isCall && callITM) return "bg-green-900/50";
-                                    if (!isCall && putITM) return "bg-red-900/50";
-                                    return "";
+                                    const itmClass = isCall ? (callITM ? "bg-green-900/50" : "") : (putITM ? "bg-red-900/50" : "");
+                                    const atmClass = isClosest ? "bg-accent/20" : "";
+                                    // ATM class takes precedence over ITM class
+                                    return atmClass || itmClass;
                                 };
 
                                 const callBgClass = getCellClass(true);
                                 const putBgClass = getCellClass(false);
-                                const neutralBgClass = isClosest ? "bg-accent/20" : "";
-
+                                
                                 const callLtpChanged = item.call && item.call.ltp !== item.call.prevLtp && item.call.prevLtp !== undefined;
                                 const callLtpIncreased = item.call && item.call.ltp > (item.call.prevLtp ?? 0);
                                 const callLtpFlashClass = callLtpChanged ? (callLtpIncreased ? 'bg-green-500/50' : 'bg-red-500/50') : '';
@@ -173,13 +173,13 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         </TableCell>
 
                                         {/* Strike Price & PCR */}
-                                        <TableCell className={cn("font-bold text-center p-2 border-l", neutralBgClass)}>
+                                        <TableCell className={cn("font-bold text-center p-2 border-l", getCellClass(true))}>
                                             {item.strike}
                                         </TableCell>
-                                        <TableCell className={cn("font-mono text-center p-2", neutralBgClass)}>
+                                        <TableCell className={cn("font-mono text-center p-2", getCellClass(true))}>
                                             {oiPcr}
                                         </TableCell>
-                                        <TableCell className={cn("font-mono text-center p-2 border-r", neutralBgClass)}>
+                                        <TableCell className={cn("font-mono text-center p-2 border-r", getCellClass(true))}>
                                             {volPcr}
                                         </TableCell>
 
@@ -231,6 +231,7 @@ export function MainContent({ indices, optionChain, maxPainHistory }: MainConten
           </CardContent>
         </Card>
         <OpenInterestChart optionChain={optionChain} />
+        <OiChangeChart optionChain={optionChain} />
         <OptionChainChart optionChain={optionChain} />
         <MaxPainChart optionChain={optionChain} maxPainHistory={maxPainHistory} />
         <BuySellChart optionChain={optionChain} type="Call" />
