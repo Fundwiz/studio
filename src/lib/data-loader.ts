@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
 import type { Index, Option, OptionChain, NiftyTick, RawOptionData } from '@/lib/types';
-import { transformOption } from '@/lib/utils';
 
 // A generic CSV parsing function
 function parseCSV<T>(filePath: string): Promise<T[]> {
@@ -46,15 +45,6 @@ export async function loadAllNiftyTicks(): Promise<NiftyTick[]> {
     const niftyTickPath = path.join(process.cwd(), 'src', 'data', 'nifty_tick.csv');
     return parseCSV<NiftyTick>(niftyTickPath);
 }
-export async function loadAllCallsTicks(): Promise<RawOptionData[]> {
-    const callsPath = path.join(process.cwd(), 'src', 'data', 'calls.csv');
-    return parseCSV<RawOptionData>(callsPath);
-}
-export async function loadAllPutsTicks(): Promise<RawOptionData[]> {
-    const putsPath = path.join(process.cwd(), 'src', 'data', 'puts.csv');
-    return parseCSV<RawOptionData>(putsPath);
-}
-
 
 export async function loadIndicesData(): Promise<Index[]> {
   try {
@@ -97,25 +87,45 @@ export async function loadIndicesData(): Promise<Index[]> {
   }
 }
 
-export async function loadOptionChainData(underlyingPrice: number): Promise<OptionChain | null> {
-    try {
-        const [callsTicks, putsTicks] = await Promise.all([
-          loadAllCallsTicks(),
-          loadAllPutsTicks()
-        ]);
-        
-        // Use last tick for initial state
-        const lastCallTick = callsTicks[callsTicks.length - 1];
-        const lastPutTick = putsTicks[putsTicks.length - 1];
-
-        const calls = lastCallTick ? [transformOption(lastCallTick)] : [];
-        const puts = lastPutTick ? [transformOption(lastPutTick)] : [];
+// Generates a mock full option chain for the frontend
+const generateOptions = (isCall: boolean, underlyingPrice: number, strikes: number[]): Option[] => {
+    return strikes.map(strike => {
+        const inTheMoney = isCall ? strike < underlyingPrice : strike > underlyingPrice;
+        const intrinsicValue = isCall ? Math.max(0, underlyingPrice - strike) : Math.max(0, strike - underlyingPrice);
+        const timeValue = (Math.random() * 50 + 10) * (inTheMoney ? 0.8 : 1.2);
+        const ltp = intrinsicValue + timeValue;
         
         return {
-            calls,
-            puts,
-            underlyingPrice
-        }
+            strike,
+            ltp: parseFloat(ltp.toFixed(2)),
+            chng: parseFloat(((Math.random() - 0.5) * 20).toFixed(2)),
+            oi: (inTheMoney ? 50000 : 150000) + Math.floor(Math.random() * 50000),
+            chngInOI: (Math.random() - 0.5) * 5000,
+            volume: 100000 + Math.floor(Math.random() * 1000000),
+            bid: ltp - 0.05,
+            ask: ltp + 0.05,
+        };
+    });
+};
+
+export async function loadOptionChainData(underlyingPrice: number): Promise<OptionChain | null> {
+    try {
+        console.log(`Generating mock option chain for frontend with underlying price: ${underlyingPrice}...`);
+        
+        // Generate a range of strikes around the underlying price
+        const strikes = Array.from({length: 41}, (_, i) => {
+            const base = underlyingPrice * 0.95;
+            const range = underlyingPrice * 0.10;
+            const step = range / 40;
+            return Math.round((base + (i * step)) / 50) * 50;
+        });
+        const uniqueStrikes = [...new Set(strikes)];
+
+        return {
+            underlyingPrice,
+            calls: generateOptions(true, underlyingPrice, uniqueStrikes),
+            puts: generateOptions(false, underlyingPrice, uniqueStrikes),
+        };
     } catch (error) {
         console.error("Error loading option chain data:", error);
         return null;

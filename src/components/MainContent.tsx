@@ -17,6 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { Option, OptionChain as OptionChainType, Index } from '@/lib/types';
 import { OptionChainChart } from './OptionChainChart';
+import { MaxPainChart } from './MaxPainChart';
 
 const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
     if (!optionChain || (optionChain.calls.length === 0 && optionChain.puts.length === 0)) {
@@ -26,7 +27,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                     <CardTitle>NIFTY 50 Option Chain</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>No option chain data found in src/data/calls.csv or src/data/puts.csv</p>
+                    <p>No option chain data available.</p>
                 </CardContent>
             </Card>
         )
@@ -57,7 +58,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                 viewport.scrollTop = offsetTop - (clientHeight / 2) + (closestStrikeRef.current.clientHeight / 2);
             }
         }
-    }, []); 
+    }, [underlyingPrice]); 
 
     let closestStrike = 0;
     if (mergedChain.length > 0) {
@@ -197,6 +198,7 @@ export function MainContent({ indices, optionChain }: MainContentProps) {
           </CardContent>
         </Card>
         <OptionChainChart optionChain={optionChain} />
+        <MaxPainChart optionChain={optionChain} />
         <OptionChainTable optionChain={optionChain} />
       </div>
       <div className="lg:col-span-1">

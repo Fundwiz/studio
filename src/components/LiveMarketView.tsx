@@ -3,84 +3,93 @@
 import { useState, useEffect } from 'react';
 import { StockRibbon } from '@/components/StockRibbon';
 import { MainContent } from '@/components/MainContent';
-import { transformOption } from '@/lib/utils';
-import type { Index, OptionChain, NiftyTick, RawOptionData } from '@/lib/types';
+import type { Index, OptionChain, NiftyTick } from '@/lib/types';
 
 type LiveMarketViewProps = {
   initialIndices: Index[];
   initialOptionChain: OptionChain | null;
   niftyTicks: NiftyTick[];
-  callsTicks: RawOptionData[];
-  putsTicks: RawOptionData[];
 };
 
 export function LiveMarketView({ 
     initialIndices, 
     initialOptionChain, 
     niftyTicks,
-    callsTicks,
-    putsTicks,
 }: LiveMarketViewProps) {
   const [indices, setIndices] = useState<Index[]>(initialIndices);
   const [optionChain, setOptionChain] = useState<OptionChain | null>(initialOptionChain);
   const [tickIndex, setTickIndex] = useState(0);
 
   useEffect(() => {
-    const maxTicks = Math.max(niftyTicks.length, callsTicks.length, putsTicks.length);
-    if (maxTicks === 0) return;
+    const niftyTicksCount = niftyTicks.length;
+    if (niftyTicksCount === 0 && !initialOptionChain) return;
 
     const timer = setInterval(() => {
       setTickIndex(prevIndex => {
-        const nextIndex = (prevIndex + 1) % maxTicks;
+        const nextIndex = prevIndex + 1;
 
         // Update Nifty Index
-        const currentNiftyTick = niftyTicks[nextIndex % niftyTicks.length];
-        if (currentNiftyTick) {
-          setIndices(currentIndices => {
-            const newIndices = [...currentIndices];
-            const niftyIndex = newIndices.findIndex(i => i.symbol === 'NIFTY 50');
+        if (niftyTicksCount > 0) {
+            const currentNiftyTick = niftyTicks[nextIndex % niftyTicksCount];
+            if (currentNiftyTick) {
+                setIndices(currentIndices => {
+                    const newIndices = [...currentIndices];
+                    const niftyIndex = newIndices.findIndex(i => i.symbol === 'NIFTY 50');
 
-            if (niftyIndex !== -1) {
-              const oldPrice = newIndices[niftyIndex].price;
-              const newPrice = currentNiftyTick.LTP;
-              const change = currentNiftyTick.Change;
-              const prevClose = newPrice - change;
-              const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
-              
-              newIndices[niftyIndex] = {
-                ...newIndices[niftyIndex],
-                price: newPrice,
-                change: change,
-                changePercent: changePercent,
-                prevPrice: oldPrice,
-              };
+                    if (niftyIndex !== -1) {
+                        const oldPrice = newIndices[niftyIndex].price;
+                        const newPrice = currentNiftyTick.LTP;
+                        const change = currentNiftyTick.Change;
+                        const prevClose = newPrice - change;
+                        const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
+                        
+                        newIndices[niftyIndex] = {
+                            ...newIndices[niftyIndex],
+                            price: newPrice,
+                            change: change,
+                            changePercent: changePercent,
+                            prevPrice: oldPrice,
+                        };
+                    }
+                    return newIndices;
+                });
             }
-            return newIndices;
-          });
         }
         
-        // Update Option Chain
-        const currentCallTick = callsTicks[nextIndex % callsTicks.length];
-        const currentPutTick = putsTicks[nextIndex % putsTicks.length];
-        
+        // Update Option Chain by randomly updating one contract in the full chain
         setOptionChain(prevChain => {
-          if (!prevChain) return null;
+            if (!prevChain) return null;
 
-          const newCall = currentCallTick ? transformOption(currentCallTick) : prevChain.calls[0];
-          const newPut = currentPutTick ? transformOption(currentPutTick) : prevChain.puts[0];
-          
-          return {
-            ...prevChain,
-            underlyingPrice: indices.find(i => i.symbol === 'NIFTY 50')?.price || prevChain.underlyingPrice,
-            calls: [{
-                ...newCall,
-                prevLtp: prevChain.calls[0]?.ltp
-            }],
-            puts: [{
-                ...newPut,
-                prevLtp: prevChain.puts[0]?.ltp
-            }],
-          };
+            // Deep copy to avoid direct state mutation, ensuring re-render
+            const newChain = JSON.parse(JSON.stringify(prevChain));
+
+            if (newChain.calls.length > 0) {
+                const callIndexToUpdate = Math.floor(Math.random() * newChain.calls.length);
+                const callToUpdate = newChain.calls[callIndexToUpdate];
+                if (callToUpdate) {
+                    callToUpdate.prevLtp = callToUpdate.ltp;
+                    callToUpdate.ltp += (Math.random() - 0.5) * (callToUpdate.ltp * 0.01); // 1% fluctuation
+                    callToUpdate.ltp = Math.max(0.05, parseFloat(callToUpdate.ltp.toFixed(2)));
+                }
+            }
+
+            if (newChain.puts.length > 0) {
+                const putIndexToUpdate = Math.floor(Math.random() * newChain.puts.length);
+                const putToUpdate = newChain.puts[putIndexToUpdate];
+                if (putToUpdate) {
+                    putToUpdate.prevLtp = putToUpdate.ltp;
+                    putToUpdate.ltp += (Math.random() - 0.5) * (putToUpdate.ltp * 0.01); // 1% fluctuation
+                    putToUpdate.ltp = Math.max(0.05, parseFloat(putToUpdate.ltp.toFixed(2)));
+                }
+            }
+            
+            // Update the underlying price from the latest index data
+            const nifty = indices.find(i => i.symbol === 'NIFTY 50');
+            if (nifty) {
+                newChain.underlyingPrice = nifty.price;
+            }
+
+            return newChain;
         });
 
         return nextIndex;
@@ -88,7 +97,7 @@ export function LiveMarketView({
     }, 1000); // Update every second
 
     return () => clearInterval(timer);
-  }, [niftyTicks, callsTicks, putsTicks, indices]);
+  }, [niftyTicks, initialOptionChain, indices]);
 
   return (
     <>
