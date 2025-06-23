@@ -74,7 +74,7 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
     return { data: results.filter(r => r), source: 'live' };
   } catch(error: any) {
     console.error("Failed to fetch live initial indices, falling back to all mock data.", error);
-    return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock', error: error.message };
+    return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock', error: `Failed to fetch live indices. ${error.message}` };
   }
 }
 
@@ -112,7 +112,7 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
         const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11;
         const daysToAdd = daysUntilThursday === 0 && isPastMarketHoursOnExpiry ? 7 : daysUntilThursday;
         const nextThursday = addDays(today, daysToAdd);
-        const expiryDate = format(nextThursday, "yyyy-MM-dd'T'06:00:00.000Z");
+        const expiryDate = format(nextThursday, "yyyy-MM-dd'T'05:30:00.000Z");
 
         const optionData = await breeze.getOptionChainQuotes({
             stockCode: "NIFTY",
@@ -151,6 +151,6 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
 
     } catch(error: any) {
         console.error("Failed to fetch live option chain, falling back to mock data.", error);
-        return { data: getMockOptionChain(underlyingPrice), source: 'mock', error: error.message };
+        return { data: getMockOptionChain(underlyingPrice), source: 'mock', error: `Failed to fetch live option chain. ${error.message}` };
     }
 }
