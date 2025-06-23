@@ -1,4 +1,6 @@
 'use client';
+import * as React from 'react';
+import type { ElementRef } from 'react';
 import { StockList } from '@/components/StockList';
 import { NewsAnalyzer } from '@/components/NewsAnalyzer';
 import { DataInfo } from '@/components/DataInfo';
@@ -15,40 +17,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { Option, OptionChain as OptionChainType, Index } from '@/lib/types';
 
-// -- Option Chain Component defined locally --
-const OptionTable = ({ title, options, isCall, underlyingPrice }: { title: string, options: Option[], isCall: boolean, underlyingPrice: number }) => (
-    <div className='flex-1'>
-        <h3 className={cn("text-lg font-semibold text-center mb-2", isCall ? "text-green-400" : "text-red-400")}>{title}</h3>
-        <ScrollArea className="h-[400px] rounded-md border">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className='p-2'>OI</TableHead>
-                        <TableHead className='p-2'>Volume</TableHead>
-                        <TableHead className='p-2'>LTP</TableHead>
-                        <TableHead className='p-2'>Chng</TableHead>
-                        <TableHead className="text-right p-2">Strike</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {options.map((option) => {
-                        const isITM = isCall ? option.strike < underlyingPrice : option.strike > underlyingPrice;
-                        return (
-                            <TableRow key={option.strike} className={cn('text-xs', isITM && (isCall ? "bg-green-900/40" : "bg-red-900/40"))}>
-                                <TableCell className='p-2'>{(option.oi / 100000).toFixed(2)}L</TableCell>
-                                <TableCell className='p-2'>{(option.volume / 1000).toFixed(2)}K</TableCell>
-                                <TableCell className='p-2'>₹{option.ltp.toFixed(2)}</TableCell>
-                                <TableCell className={cn('p-2', option.chng > 0 ? "text-green-400" : "text-red-400")}>{option.chng.toFixed(2)}</TableCell>
-                                <TableCell className="font-bold text-right p-2 bg-card/80">{option.strike}</TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
-        </ScrollArea>
-    </div>
-);
-
 const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) => {
     if (!optionChain || (optionChain.calls.length === 0 && optionChain.puts.length === 0)) {
         return (
@@ -57,30 +25,128 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
                     <CardTitle>NIFTY 50 Option Chain</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>No option chain data found in src/data/option_chain.csv</p>
+                    <p>No option chain data found in src/data/calls.csv or src/data/puts.csv</p>
                 </CardContent>
             </Card>
         )
     }
+
+    const { calls, puts, underlyingPrice } = optionChain;
+
+    const strikes = [...new Set([...calls.map(c => c.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
+    const callMap = new Map(calls.map(c => [c.strike, c]));
+    const putMap = new Map(puts.map(p => [p.strike, p]));
+
+    const mergedChain = strikes.map(strike => ({
+        strike,
+        call: callMap.get(strike),
+        put: putMap.get(strike)
+    }));
+
+    const closestStrikeRef = React.useRef<HTMLTableRowElement>(null);
+    const scrollAreaRef = React.useRef<ElementRef<typeof ScrollArea>>(null);
+
+    React.useEffect(() => {
+        if (closestStrikeRef.current && scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                const { offsetTop } = closestStrikeRef.current;
+                const { clientHeight } = viewport;
+                // Center the strike price row in the viewport
+                viewport.scrollTop = offsetTop - (clientHeight / 2) + (closestStrikeRef.current.clientHeight / 2);
+            }
+        }
+    }, []); 
+
+    let closestStrike = 0;
+    if (mergedChain.length > 0) {
+        closestStrike = mergedChain.reduce((prev, curr) => 
+            Math.abs(curr.strike - underlyingPrice) < Math.abs(prev.strike - underlyingPrice) ? curr : prev
+        ).strike;
+    }
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle>NIFTY 50 Option Chain</CardTitle>
                 <CardDescription>
-                    Displaying option chain data for NIFTY 50. Underlying Price: <span className='font-bold text-primary'>₹{optionChain.underlyingPrice.toFixed(2)}</span>
+                    Displaying option chain data for NIFTY 50. Underlying Price: <span className='font-bold text-primary'>₹{underlyingPrice.toFixed(2)}</span>
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col md:flex-row gap-4 w-full">
-                    <OptionTable title="CALLS" options={optionChain.calls} isCall={true} underlyingPrice={optionChain.underlyingPrice} />
-                    <OptionTable title="PUTS" options={optionChain.puts} isCall={false} underlyingPrice={optionChain.underlyingPrice} />
-                </div>
+                <ScrollArea className="h-[600px] rounded-md border" ref={scrollAreaRef}>
+                    <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
+                            <TableRow>
+                                <TableHead className='p-2 text-center text-green-400 font-bold' colSpan={4}>CALLS</TableHead>
+                                <TableHead className='p-2 text-center border-l border-r'>STRIKE</TableHead>
+                                <TableHead className='p-2 text-center text-red-400 font-bold' colSpan={4}>PUTS</TableHead>
+                            </TableRow>
+                            <TableRow>
+                                <TableHead className='p-2'>OI</TableHead>
+                                <TableHead className='p-2'>Volume</TableHead>
+                                <TableHead className='p-2'>Chng %</TableHead>
+                                <TableHead className='p-2'>LTP</TableHead>
+                                <TableHead className="text-center p-2 font-bold border-l border-r"></TableHead>
+                                <TableHead className='p-2 text-right'>LTP</TableHead>
+                                <TableHead className='p-2 text-right'>Chng %</TableHead>
+                                <TableHead className='p-2 text-right'>Volume</TableHead>
+                                <TableHead className='p-2 text-right'>OI</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {mergedChain.map((item) => {
+                                const callITM = item.call ? item.strike < underlyingPrice : false;
+                                const putITM = item.put ? item.strike > underlyingPrice : false;
+                                const isClosest = item.strike === closestStrike;
+                                return (
+                                    <TableRow 
+                                        key={item.strike} 
+                                        ref={isClosest ? closestStrikeRef : null}
+                                        className={cn('text-xs', isClosest && "bg-blue-900/40")}
+                                    >
+                                        {/* Call Data */}
+                                        <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
+                                            {item.call ? `${(item.call.oi / 100000).toFixed(2)}L` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
+                                            {item.call ? `${(item.call.volume / 1000).toFixed(2)}K` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2', callITM && "bg-green-900/40", item.call && item.call.chng >= 0 ? "text-green-400" : "text-red-400")}>
+                                            {item.call ? item.call.chng.toFixed(2) : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
+                                            {item.call ? `₹${item.call.ltp.toFixed(2)}` : '-'}
+                                        </TableCell>
+
+                                        {/* Strike Price */}
+                                        <TableCell className="font-bold text-center p-2 bg-card border-l border-r">
+                                            {item.strike}
+                                        </TableCell>
+
+                                        {/* Put Data */}
+                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
+                                            {item.put ? `₹${item.put.ltp.toFixed(2)}` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40", item.put && item.put.chng >= 0 ? "text-green-400" : "text-red-400")}>
+                                            {item.put ? item.put.chng.toFixed(2) : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
+                                            {item.put ? `${(item.put.volume / 1000).toFixed(2)}K` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
+                                            {item.put ? `${(item.put.oi / 100000).toFixed(2)}L` : '-'}
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
             </CardContent>
         </Card>
     );
 }
-// -- End of local component --
-
 
 type MainContentProps = {
     indices: Index[];
