@@ -113,7 +113,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[600px] rounded-md border" ref={scrollAreaRef}>
-                    <Table>
+                    <Table className="min-w-[1200px]">
                         <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
                             <TableRow>
                                 <TableHead className='p-2 text-center text-green-400 font-bold' colSpan={5}>CALLS</TableHead>
