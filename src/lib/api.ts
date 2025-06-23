@@ -31,14 +31,12 @@ async function getBreezeInstance() {
     if (!breeze) {
         throw new Error("Breeze API not configured. Check environment variables.");
     }
-    // Attempt to generate a session every time to ensure it's valid.
-    // The library may handle caching or re-authentication internally.
     try {
         await breeze.generateSession({ apiSecret: BREEZE_API_SECRET!, sessionToken: BREEZE_SESSION_TOKEN! });
         return breeze;
     } catch (error: any) {
-        console.error("Breeze API session generation failed:", error.message);
-        throw new Error(`Failed to generate Breeze API session. Your token may have expired or credentials may be invalid.`);
+        console.error("Breeze API session generation failed:", error);
+        throw new Error(`Failed to generate Breeze API session. Your token may have expired or credentials may be invalid. Original error: ${error.message}`);
     }
 }
 
@@ -51,24 +49,19 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
   try {
     const breeze = await getBreezeInstance();
     const symbols = Object.keys(BREEZE_STOCK_CODES);
-    
-    // Use a wider date range to ensure we get data
-    const today = new Date();
-    const fromDate = format(startOfDay(today), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-    const toDate = format(endOfDay(today), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     const quotePromises = symbols.map(async (symbol) => {
         const { exchange, code } = BREEZE_STOCK_CODES[symbol];
+        
+        // Per documentation, getQuotes for the latest price doesn't need date/interval.
+        // Those are for historical data requests and will cause errors here.
         const quote = await breeze.getQuotes({
             stockCode: code,
             exchangeCode: exchange,
-            interval: "1day", // Use 1day interval to get the latest close/ltp
-            fromDate: fromDate,
-            toDate: toDate,
         });
 
         if (quote.Success && quote.Success.length > 0) {
-            const data = quote.Success[quote.Success.length - 1]; // Get the most recent data point
+            const data = quote.Success[0];
             return {
                 symbol: symbol,
                 name: data.stock_name || symbol,
@@ -126,7 +119,10 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
         const today = new Date();
         const dayOfWeek = today.getDay(); // Sunday is 0, Thursday is 4
         const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-        const nextThursday = addDays(today, daysUntilThursday === 0 && today.getHours() > 16 ? 7 : daysUntilThursday); // If it's Thursday past market hours, get next week's
+        // If it's Thursday past market hours (e.g., after 4 PM UTC, which is late in India), get next week's
+        const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11;
+        const daysToAdd = daysUntilThursday === 0 && isPastMarketHoursOnExpiry ? 7 : daysUntilThursday;
+        const nextThursday = addDays(today, daysToAdd);
         const expiryDate = format(nextThursday, "yyyy-MM-dd'T'06:00:00.000Z");
 
         const optionData = await breeze.getOptionChainQuotes({
