@@ -46,17 +46,14 @@ export function NewsAnalyzer() {
   const [content, setContent] = useState(sampleContent);
 
   useEffect(() => {
+    if (!state.message) return; // Don't show toast on initial render
+    
     if (state.message && state.message !== 'Analysis successful.') {
         toast({
             variant: "destructive",
             title: "Error",
             description: state.message,
         })
-    }
-    if (state.message === 'Analysis successful.') {
-      setTicker('');
-      setHeadline('');
-      setContent('');
     }
   }, [state, toast]);
 
@@ -78,7 +75,7 @@ export function NewsAnalyzer() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>AI News Analyzer</CardTitle>
-        <CardDescription>Get AI-driven sentiment analysis on news affecting your stocks.</CardDescription>
+        <CardDescription>Get AI-driven sentiment analysis on news affecting your stocks. For major indices, it will also analyze FII/DII data.</CardDescription>
       </CardHeader>
       <form action={formAction}>
         <CardContent className="space-y-4">
