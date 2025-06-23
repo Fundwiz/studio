@@ -68,7 +68,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
 
     React.useEffect(() => {
         if (closestStrikeRef.current && scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+            const viewport = (scrollAreaRef.current as any).querySelector('div[data-radix-scroll-area-viewport]');
             if (viewport) {
                 const { offsetTop } = closestStrikeRef.current;
                 const { clientHeight } = viewport;
@@ -214,8 +214,8 @@ type MainContentProps = {
 
 export function MainContent({ indices, optionChain }: MainContentProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <div className="lg:col-span-3 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="lg:col-span-4 space-y-6">
         <DataInfo />
         <Card>
           <CardHeader>
