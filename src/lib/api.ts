@@ -3,7 +3,6 @@
 import type { Index, Option, OptionChain, FetchedData } from '@/lib/types';
 import { initialIndices, updateIndexPrices, getMockOptionChain } from '@/lib/mock-data';
 import BreezeConnect from 'breezeconnect';
-import { format, addDays } from 'date-fns';
 
 // --- Configuration ---
 const BREEZE_API_KEY = process.env.BREEZE_API_KEY;
@@ -45,41 +44,47 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
   try {
     const breeze = await getBreezeInstance();
     const symbols = Object.keys(BREEZE_STOCK_CODES);
+    const finalIndices: Index[] = [];
+    let allFailed = true;
 
     const quotePromises = symbols.map(async (symbol) => {
         const { exchange, code } = BREEZE_STOCK_CODES[symbol];
         
-        const quote = await breeze.getQuotes({
-            stockCode: code,
-            exchangeCode: exchange,
-        });
+        try {
+            const quote = await breeze.getQuotes({
+                stockCode: code,
+                exchangeCode: exchange,
+            });
 
-        if (quote.Success && quote.Success.length > 0) {
-            const data = quote.Success[0];
-            return {
-                symbol: symbol,
-                name: data.stock_name || symbol,
-                price: parseFloat(data.ltp),
-                change: parseFloat(data.change),
-                changePercent: parseFloat(data.percent_change),
-                prevPrice: parseFloat(data.ltp) - parseFloat(data.change),
-            } as Index;
-        } else {
-             console.warn(`No live data for ${symbol}. API Response:`, quote.Error || 'Empty success array');
-             // Fallback to mock for this specific index if it fails
-             return initialIndices.find(i => i.symbol === symbol)!;
+            if (quote.Success && quote.Success.length > 0) {
+                const data = quote.Success[0];
+                allFailed = false; // At least one succeeded
+                return {
+                    symbol: symbol,
+                    name: data.stock_name || symbol,
+                    price: parseFloat(data.ltp),
+                    change: parseFloat(data.change),
+                    changePercent: parseFloat(data.percent_change),
+                    prevPrice: parseFloat(data.ltp) - parseFloat(data.change),
+                } as Index;
+            } else {
+                 console.warn(`No live data for ${symbol}. API Response:`, quote.Error || 'Empty success array');
+                 return initialIndices.find(i => i.symbol === symbol)!;
+            }
+        } catch (err) {
+            console.error(`Error fetching quote for ${symbol}:`, err);
+            return initialIndices.find(i => i.symbol === symbol)!; // Fallback for this specific index
         }
     });
 
     const results = await Promise.all(quotePromises);
-    const successfulResults = results.filter(r => r);
-
-    // If all requests failed, fallback entirely to mock
-    if (successfulResults.length === 0) {
-        throw new Error("All live data requests failed.");
+    
+    if (allFailed) {
+        throw new Error("All live index data requests failed.");
     }
 
-    return { data: successfulResults, source: 'live' };
+    return { data: results.filter(r => r) as Index[], source: 'live' };
+
   } catch(error: any) {
     console.error("Failed to fetch live initial indices, falling back to all mock data.", error);
     return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock', error: `Failed to fetch live indices. ${error.message}` };
@@ -117,31 +122,19 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
     try {
         const breeze = await getBreezeInstance();
         
-        // Find the next weekly expiry (Thursday)
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // Sunday is 0, Thursday is 4
-        // Calculate days to add to get to the next Thursday
-        const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-        
-        // If today is Thursday and market is closed, get next week's expiry
-        const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11; // 11 UTC is 4:30 PM IST
-        const daysToAdd = daysUntilThursday === 0 && isPastMarketHoursOnExpiry ? 7 : daysUntilThursday;
-        
-        const nextThursday = addDays(today, daysToAdd);
-        // The API expects this specific time format.
-        const expiryDate = format(nextThursday, "yyyy-MM-dd'T'05:30:00.000Z");
-
+        // Let the API decide the nearest expiry by leaving expiryDate blank
         const optionData = await breeze.getOptionChainQuotes({
             stockCode: "NIFTY",
             exchangeCode: "NFO",
             productType: "options",
-            expiryDate: expiryDate,
+            expiryDate: "", // Empty for nearest expiry
             right: "others", // Fetches both Calls and Puts
             strikePrice: "" // Fetches for all strike prices
         });
 
         if (!optionData.Success || optionData.Success.length === 0) {
-            throw new Error(optionData.Error || "Failed to fetch option chain from Breeze API. The response was empty.");
+            const errorMessage = optionData.Error ? `Breeze API Error: ${optionData.Error}` : "Failed to fetch option chain. The API response was empty.";
+            throw new Error(errorMessage);
         }
 
         const transformOption = (breezeOption: any): Option => ({
