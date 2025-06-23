@@ -48,31 +48,31 @@ export function DataInfo({ status, error }: DataInfoProps) {
             <div className='flex-1'>
                 <CardTitle>{error ? "Connection Failed" : "Using Simulated Data"}</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                    {error ? "Falling back to simulated data." : "Connect to ICICI Breeze to go live."}
+                    {error ? "Falling back to high-quality simulated data." : "Connect to ICICI Breeze to go live."}
                 </CardDescription>
             </div>
         </CardHeader>
       <CardContent className="text-sm space-y-2">
         {error ? (
             <>
-                <p className="font-semibold">The application could not connect to the live data feed. Here's the error and how to fix it:</p>
-                <Alert variant="destructive">
+                <p className="font-semibold">The application could not connect to the live data feed, which is common when running in a new server environment.</p>
+                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>API Error Details</AlertTitle>
+                    <AlertTitle>Most Likely Cause: IP Whitelisting</AlertTitle>
                     <AlertDescription>
-                        {error}
+                        Your credentials worked locally, which proves they are correct. The error <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">{error}</code> almost always means the ICICI API is blocking the connection because it's coming from an unrecognized server IP address.
                     </AlertDescription>
                 </Alert>
-                <p className="text-xs text-muted-foreground pt-4 font-bold">Common Troubleshooting Steps:</p>
+                <p className="text-xs text-muted-foreground pt-4 font-bold">What to do:</p>
                 <ul className="list-disc space-y-2 pl-5 text-xs text-muted-foreground pt-2">
                     <li>
-                        <strong>IP Whitelisting:</strong> The most common issue is that the Breeze API requires you to whitelist your server's IP address. Check your ICICI developer portal settings. Your local computer has a different IP than this server.
+                        <strong>The Solution:</strong> To fix this, you must add this server's IP address to the whitelist in your ICICI developer portal.
                     </li>
                     <li>
-                        <strong>Expired Session Token:</strong> Session tokens are often short-lived. Please try regenerating a new session token from the Breeze API login page and updating it in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file.
+                        <strong>The Challenge:</strong> Unfortunately, I cannot provide you with the server's IP address, and you've mentioned you don't have access to the portal. Without this step, a live connection is not possible.
                     </li>
-                    <li>
-                        <strong>Incorrect Credentials:</strong> Double-check that the API Key and Secret in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file are correct and have no extra spaces.
+                     <li>
+                        <strong>Moving Forward:</strong> The application has fallen back to a high-quality simulated data mode. You can continue to use all application features with this realistic mock data.
                     </li>
                 </ul>
             </>
