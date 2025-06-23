@@ -55,15 +55,26 @@ export function DataInfo({ status, error }: DataInfoProps) {
       <CardContent className="text-sm space-y-2">
         {error ? (
             <>
-                <p className="font-semibold">The application could not connect to the live data feed. Please check the following:</p>
+                <p className="font-semibold">The application could not connect to the live data feed. Here's the error and how to fix it:</p>
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>API Error</AlertTitle>
+                    <AlertTitle>API Error Details</AlertTitle>
                     <AlertDescription>
                         {error}
                     </AlertDescription>
                 </Alert>
-                <p className="text-xs text-muted-foreground pt-2">Verify your credentials in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file are correct. Note that session tokens expire and may need to be regenerated. Also ensure the hosting environment can reach the Breeze API servers.</p>
+                <p className="text-xs text-muted-foreground pt-4 font-bold">Common Troubleshooting Steps:</p>
+                <ul className="list-disc space-y-2 pl-5 text-xs text-muted-foreground pt-2">
+                    <li>
+                        <strong>IP Whitelisting:</strong> The most common issue is that the Breeze API requires you to whitelist your server's IP address. Check your ICICI developer portal settings. Your local computer has a different IP than this server.
+                    </li>
+                    <li>
+                        <strong>Expired Session Token:</strong> Session tokens are often short-lived. Please try regenerating a new session token from the Breeze API login page and updating it in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file.
+                    </li>
+                    <li>
+                        <strong>Incorrect Credentials:</strong> Double-check that the API Key and Secret in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file are correct and have no extra spaces.
+                    </li>
+                </ul>
             </>
         ) : (
             <>

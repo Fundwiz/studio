@@ -44,7 +44,6 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
   try {
     const breeze = await getBreezeInstance();
     const symbols = Object.keys(BREEZE_STOCK_CODES);
-    const finalIndices: Index[] = [];
     let allFailed = true;
 
     const quotePromises = symbols.map(async (symbol) => {
@@ -58,15 +57,21 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
 
             if (quote.Success && quote.Success.length > 0) {
                 const data = quote.Success[0];
-                allFailed = false; // At least one succeeded
+                allFailed = false;
+
+                const ltp = parseFloat(data.ltp);
+                const prevClose = parseFloat(data.previous_close);
+                const change = ltp - prevClose;
+                
                 return {
                     symbol: symbol,
                     name: data.stock_name || symbol,
-                    price: parseFloat(data.ltp),
-                    change: parseFloat(data.change),
-                    changePercent: parseFloat(data.percent_change),
-                    prevPrice: parseFloat(data.ltp) - parseFloat(data.change),
+                    price: ltp,
+                    change: parseFloat(change.toFixed(2)),
+                    changePercent: parseFloat(data.ltp_percent_change),
+                    prevPrice: prevClose,
                 } as Index;
+
             } else {
                  console.warn(`No live data for ${symbol}. API Response:`, quote.Error || 'Empty success array');
                  return initialIndices.find(i => i.symbol === symbol)!;
