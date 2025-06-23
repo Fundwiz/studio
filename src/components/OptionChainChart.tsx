@@ -87,13 +87,13 @@ export function OptionChainChart({
     const support = processedData.reduce((max, d) => d.putTotalOi > max.putTotalOi ? d : max, { putTotalOi: -1, strike: 0 }).strike;
 
     // Filter to show a range of strikes around the underlying price
-    const strikeRange = 10;
+    const strikeRange = 20; // Increased range to make S/R visible
     const closestStrike = processedData.reduce(
         (prev, curr) => Math.abs(curr.strike - underlyingPrice) < Math.abs(prev.strike - underlyingPrice) ? curr : prev,
         { strike: 0 }
     ).strike;
     
-    if (closestStrike === 0) return { chartData: processedData.slice(0, 20), resistance, support };
+    if (closestStrike === 0) return { chartData: processedData.slice(0, 40), resistance, support };
 
     const closestIndex = processedData.findIndex(d => d.strike === closestStrike);
     const startIndex = Math.max(0, closestIndex - strikeRange);

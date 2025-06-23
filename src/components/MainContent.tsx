@@ -54,8 +54,8 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
     const { calls, puts, underlyingPrice } = optionChain;
 
     const strikes = [...new Set([...calls.map(c => c.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
-    const callMap = new Map(calls.map(c => [c.strike, c]));
-    const putMap = new Map(puts.map(p => [p.strike, p]));
+    const callMap = new Map(calls.map(item => [item.strike, item]));
+    const putMap = new Map(puts.map(item => [item.strike, item]));
 
     const mergedChain = strikes.map(strike => ({
         strike,
@@ -91,12 +91,13 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
         const priceChanged = option.ltp !== option.prevLtp && option.prevLtp !== undefined;
         const priceIncreased = option.ltp > (option.prevLtp ?? 0);
         const isITM = isCall ? option.strike < underlyingPrice : option.strike > underlyingPrice;
+        const isClosest = option.strike === closestStrike;
 
         return (
             <TableCell className={cn(
                 'p-2 transition-colors duration-200',
                 !isCall ? 'text-right' : '',
-                isITM && (isCall ? "bg-green-500/10" : "bg-red-500/10"),
+                isClosest ? 'bg-accent/20' : (isITM && (isCall ? "bg-green-500/10" : "bg-red-500/10")),
                 priceChanged && (priceIncreased ? 'bg-green-500/50' : 'bg-red-500/50')
             )}>
                 {option ? `₹${option.ltp.toFixed(2)}` : '-'}
@@ -158,43 +159,43 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         className={cn('text-xs', isClosest && "bg-accent/20")}
                                     >
                                         {/* Call Data */}
-                                        <TableCell className={cn('p-2', callITM && "bg-green-500/10")}>
+                                        <TableCell className={cn('p-2', isClosest ? 'bg-accent/20' : callITM && "bg-green-500/10")}>
                                             {item.call ? `${(item.call.oi / 100000).toFixed(2)}L` : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2 font-medium whitespace-nowrap', callBuildup.className, callITM && "bg-green-500/10")}>
+                                        <TableCell className={cn('p-2 font-medium whitespace-nowrap', callBuildup.className, isClosest ? 'bg-accent/20' : callITM && "bg-green-500/10")}>
                                             {callBuildup.text}
                                         </TableCell>
-                                        <TableCell className={cn('p-2', callITM && "bg-green-500/10")}>
+                                        <TableCell className={cn('p-2', isClosest ? 'bg-accent/20' : callITM && "bg-green-500/10")}>
                                             {item.call ? `${(item.call.volume / 1000).toFixed(2)}K` : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2', callITM && "bg-green-500/10", item.call && item.call.chng >= 0 ? "text-green-400" : "text-red-400")}>
+                                        <TableCell className={cn('p-2', isClosest ? 'bg-accent/20' : callITM && "bg-green-500/10", item.call && item.call.chng >= 0 ? "text-green-400" : "text-red-400")}>
                                             {item.call ? item.call.chng.toFixed(2) : '-'}
                                         </TableCell>
                                         {renderLtpCell(item.call, true)}
 
                                         {/* Strike Price & PCR */}
-                                        <TableCell className="font-bold text-center p-2 bg-card border-l">
+                                        <TableCell className={cn("font-bold text-center p-2 border-l", isClosest && "bg-accent/20")}>
                                             {item.strike}
                                         </TableCell>
-                                        <TableCell className="font-mono text-center p-2 bg-card">
+                                        <TableCell className={cn("font-mono text-center p-2", isClosest && "bg-accent/20")}>
                                             {oiPcr}
                                         </TableCell>
-                                        <TableCell className="font-mono text-center p-2 bg-card border-r">
+                                        <TableCell className={cn("font-mono text-center p-2 border-r", isClosest && "bg-accent/20")}>
                                             {volPcr}
                                         </TableCell>
 
                                         {/* Put Data */}
                                         {renderLtpCell(item.put, false)}
-                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-500/10", item.put && item.put.chng >= 0 ? "text-green-400" : "text-red-400")}>
+                                        <TableCell className={cn('p-2 text-right', isClosest ? 'bg-accent/20' : putITM && "bg-red-500/10", item.put && item.put.chng >= 0 ? "text-green-400" : "text-red-400")}>
                                             {item.put ? item.put.chng.toFixed(2) : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-500/10")}>
+                                        <TableCell className={cn('p-2 text-right', isClosest ? 'bg-accent/20' : putITM && "bg-red-500/10")}>
                                             {item.put ? `${(item.put.volume / 1000).toFixed(2)}K` : '-'}
                                         </TableCell>
-                                        <TableCell className={cn('p-2 text-right font-medium whitespace-nowrap', putBuildup.className, putITM && "bg-red-500/10")}>
+                                        <TableCell className={cn('p-2 text-right font-medium whitespace-nowrap', putBuildup.className, isClosest ? 'bg-accent/20' : putITM && "bg-red-500/10")}>
                                             {putBuildup.text}
                                         </TableCell>
-                                        <TableCell className={cn('p-2 text-right', putITM && "bg-red-500/10")}>
+                                        <TableCell className={cn('p-2 text-right', isClosest ? 'bg-accent/20' : putITM && "bg-red-500/10")}>
                                             {item.put ? `${(item.put.oi / 100000).toFixed(2)}L` : '-'}
                                         </TableCell>
                                     </TableRow>
