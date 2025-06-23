@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Index, Option, OptionChain as OptionChainType } from '@/lib/types';
-import { initialIndices, updateIndexPrices, getMockOptionChain } from '@/lib/mock-data';
+import { fetchInitialIndices, fetchUpdatedIndices, fetchOptionChain } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { StockRibbon } from '@/components/StockRibbon';
 import { StockList } from '@/components/StockList';
 import { NewsAnalyzer } from '@/components/NewsAnalyzer';
+import { DataInfo } from '@/components/DataInfo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -91,28 +92,34 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
 // -- End of local component --
 
 export default function Home() {
-  const [indices, setIndices] = useState<Index[]>(initialIndices);
+  const [indices, setIndices] = useState<Index[]>([]);
   const [optionChain, setOptionChain] = useState<OptionChainType | null>(null);
+  const indicesRef = useRef<Index[]>([]);
 
   useEffect(() => {
-    const initialNifty = initialIndices.find(i => i.symbol === 'NIFTY 50');
-    if (initialNifty) {
-      setOptionChain(getMockOptionChain(initialNifty.price));
-    }
+    const updateData = async () => {
+      const currentIndices = indicesRef.current;
+      let dataToUpdate: Index[];
 
-    const interval = setInterval(() => {
-      setIndices(currentIndices => {
-        const updatedIndices = updateIndexPrices(currentIndices);
-        const newNifty = updatedIndices.find(i => i.symbol === 'NIFTY 50');
+      if (currentIndices.length === 0) {
+        dataToUpdate = await fetchInitialIndices();
+      } else {
+        dataToUpdate = await fetchUpdatedIndices(currentIndices);
+      }
+      
+      setIndices(dataToUpdate);
+      indicesRef.current = dataToUpdate;
 
-        if (newNifty) {
-          setOptionChain(getMockOptionChain(newNifty.price));
-        }
-        return updatedIndices;
-      });
-    }, 3000);
+      const nifty = dataToUpdate.find(i => i.symbol === 'NIFTY 50');
+      if (nifty) {
+        const optionData = await fetchOptionChain(nifty.price);
+        setOptionChain(optionData);
+      }
+    };
 
-    return () => clearInterval(interval);
+    updateData();
+    const intervalId = setInterval(updateData, 3000);
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -122,6 +129,7 @@ export default function Home() {
       <main className="flex-1 p-4 md:p-8 container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            <DataInfo />
             <Card>
               <CardHeader>
                 <CardTitle>Market Indices</CardTitle>
