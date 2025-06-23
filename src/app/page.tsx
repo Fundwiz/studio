@@ -1,7 +1,4 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import type { Index, Option, OptionChain as OptionChainType, FetchedData } from '@/lib/types';
-import { fetchInitialIndices, fetchUpdatedIndices, fetchOptionChain } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { StockRibbon } from '@/components/StockRibbon';
 import { StockList } from '@/components/StockList';
@@ -18,7 +15,8 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Alert } from '@/components/ui/alert';
+import type { Option, OptionChain as OptionChainType } from '@/lib/types';
+import { initialIndices, getMockOptionChain } from '@/lib/mock-data';
 
 // -- Option Chain Component defined locally --
 const OptionTable = ({ title, options, isCall, underlyingPrice }: { title: string, options: Option[], isCall: boolean, underlyingPrice: number }) => (
@@ -68,7 +66,7 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
                     <CardTitle>NIFTY 50 Option Chain</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>Loading option chain data...</p>
+                    <p>No option chain data available.</p>
                 </CardContent>
             </Card>
         )
@@ -93,45 +91,9 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
 // -- End of local component --
 
 export default function Home() {
-  const [indices, setIndices] = useState<Index[]>([]);
-  const [optionChain, setOptionChain] = useState<OptionChainType | null>(null);
-  const [dataStatus, setDataStatus] = useState<'loading' | 'live' | 'mock'>('loading');
-  const [apiError, setApiError] = useState<string | null>(null);
-  const indicesRef = useRef<Index[]>([]);
-
-  useEffect(() => {
-    const updateData = async () => {
-      const currentIndices = indicesRef.current;
-      
-      const indicesResult = currentIndices.length === 0
-        ? await fetchInitialIndices()
-        : await fetchUpdatedIndices(currentIndices);
-      
-      setIndices(indicesResult.data);
-      indicesRef.current = indicesResult.data;
-
-      const nifty = indicesResult.data.find(i => i.symbol === 'NIFTY 50');
-      if (nifty) {
-        const optionChainResult = await fetchOptionChain(nifty.price);
-        setOptionChain(optionChainResult.data);
-
-        if (indicesResult.source === 'live' && optionChainResult.source === 'live') {
-          setDataStatus('live');
-          setApiError(null);
-        } else {
-          setDataStatus('mock');
-          setApiError(indicesResult.error || optionChainResult.error || 'Could not connect to live data feed.');
-        }
-      } else {
-          setDataStatus(indicesResult.source);
-          setApiError(indicesResult.error || 'NIFTY 50 index data not found.');
-      }
-    };
-
-    updateData();
-    const intervalId = setInterval(updateData, 3000);
-    return () => clearInterval(intervalId);
-  }, []);
+  const indices = initialIndices;
+  const nifty = indices.find(i => i.symbol === 'NIFTY 50');
+  const optionChain = nifty ? getMockOptionChain(nifty.price) : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -140,7 +102,7 @@ export default function Home() {
       <main className="flex-1 p-4 md:p-8 container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <DataInfo status={dataStatus} error={apiError} />
+            <DataInfo />
             <Card>
               <CardHeader>
                 <CardTitle>Market Indices</CardTitle>

@@ -25,9 +25,3 @@ export type OptionChain = {
     puts: Option[];
     underlyingPrice: number;
 };
-
-export type FetchedData<T> = {
-    data: T;
-    source: 'live' | 'mock';
-    error?: string;
-};

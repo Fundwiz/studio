@@ -1,28 +1,16 @@
 import type { Index, Option, OptionChain } from '@/lib/types';
 
+/**
+ * You can replace this with your own historical data.
+ * This is the static data for the main index tickers.
+ */
 export const initialIndices: Index[] = [
-  { symbol: 'NIFTY 50', name: 'NIFTY 50', price: 22500, change: 150.75, changePercent: 0.67 },
-  { symbol: 'NIFTY BANK', name: 'NIFTY BANK', price: 48500, change: -250.40, changePercent: -0.51 },
-  { symbol: 'NIFTY IT', name: 'NIFTY IT', price: 34800, change: 300.10, changePercent: 0.87 },
-  { symbol: 'SENSEX', name: 'BSE SENSEX', price: 74000, change: 450.25, changePercent: 0.61 },
+  { symbol: 'NIFTY 50', name: 'NIFTY 50', price: 22500, change: 150.75, changePercent: 0.67, prevPrice: 22349.25 },
+  { symbol: 'NIFTY BANK', name: 'NIFTY BANK', price: 48500, change: -250.40, changePercent: -0.51, prevPrice: 48750.40 },
+  { symbol: 'NIFTY IT', name: 'NIFTY IT', price: 34800, change: 300.10, changePercent: 0.87, prevPrice: 34499.90 },
+  { symbol: 'SENSEX', name: 'BSE SENSEX', price: 74000, change: 450.25, changePercent: 0.61, prevPrice: 73549.75 },
 ];
 
-export function updateIndexPrices(indices: Index[]): Index[] {
-  return indices.map(index => {
-    const change = (Math.random() - 0.49) * (index.price * 0.001); // up to 0.1% change, slightly biased up
-    const newPrice = Math.max(0, index.price + change);
-    const totalChange = newPrice - (initialIndices.find(i => i.symbol === index.symbol)?.price || newPrice);
-    const totalChangePercent = (totalChange / (initialIndices.find(i => i.symbol === index.symbol)?.price || newPrice)) * 100;
-    
-    return {
-      ...index,
-      prevPrice: index.price,
-      price: parseFloat(newPrice.toFixed(2)),
-      change: parseFloat(totalChange.toFixed(2)),
-      changePercent: parseFloat(totalChangePercent.toFixed(2)),
-    };
-  });
-};
 
 const generateOptions = (strike: number, isCall: boolean, underlyingPrice: number): Option => {
     const isITM = isCall ? strike < underlyingPrice : strike > underlyingPrice;
@@ -50,6 +38,10 @@ const generateOptions = (strike: number, isCall: boolean, underlyingPrice: numbe
     };
 };
 
+/**
+ * You can replace this with your own historical option chain data.
+ * This function generates a sample option chain for a given price.
+ */
 export const getMockOptionChain = (underlyingPrice: number): OptionChain => {
     const strikes: number[] = [];
     const baseStrike = Math.round(underlyingPrice / 50) * 50;
