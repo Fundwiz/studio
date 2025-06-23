@@ -62,7 +62,7 @@ export function OptionChainChart({
   const { chartData, resistance, support } = useMemo(() => {
     if (!optionChain) return { chartData: [], resistance: 0, support: 0 };
 
-    const { calls, puts, underlyingPrice } = optionChain;
+    const { calls, puts } = optionChain;
     const strikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])].sort((a, b) => a - b);
     const callMap = new Map(calls.map((c) => [c.strike, c]));
     const putMap = new Map(puts.map((p) => [p.strike, p]));
@@ -85,21 +85,9 @@ export function OptionChainChart({
 
     const resistance = processedData.reduce((max, d) => d.callTotalOi > max.callTotalOi ? d : max, { callTotalOi: -1, strike: 0 }).strike;
     const support = processedData.reduce((max, d) => d.putTotalOi > max.putTotalOi ? d : max, { putTotalOi: -1, strike: 0 }).strike;
-
-    // Filter to show a range of strikes around the underlying price
-    const strikeRange = 20; // Increased range to make S/R visible
-    const closestStrike = processedData.reduce(
-        (prev, curr) => Math.abs(curr.strike - underlyingPrice) < Math.abs(prev.strike - underlyingPrice) ? curr : prev,
-        { strike: 0 }
-    ).strike;
     
-    if (closestStrike === 0) return { chartData: processedData.slice(0, 40), resistance, support };
-
-    const closestIndex = processedData.findIndex(d => d.strike === closestStrike);
-    const startIndex = Math.max(0, closestIndex - strikeRange);
-    const endIndex = Math.min(processedData.length, closestIndex + strikeRange + 1);
-
-    return { chartData: processedData.slice(startIndex, endIndex), resistance, support };
+    // Return all data to ensure support/resistance is always visible
+    return { chartData: processedData, resistance, support };
 
   }, [optionChain]);
 
@@ -140,6 +128,7 @@ export function OptionChainChart({
                 axisLine={false}
                 tickMargin={8}
                 tickFormatter={(value) => `${value}`}
+                interval="preserveStartEnd"
               />
               <YAxis
                 yAxisId="left"
