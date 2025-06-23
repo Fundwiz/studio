@@ -13,10 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { handleAnalyzeNews, type FormState } from '@/app/actions';
-import { AlertCircle, Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -34,10 +34,16 @@ const initialState: FormState = {
   message: '',
 };
 
+const sampleHeadline = "Economic Reforms and Strong GDP Growth Propel Nifty 50 to Record Highs";
+const sampleContent = "India's benchmark Nifty 50 index surged to an all-time high today, driven by a wave of investor optimism following the announcement of significant economic reforms. The government's new policies, aimed at boosting manufacturing and simplifying tax structures, have been widely praised by market analysts. This, combined with a stronger-than-expected GDP growth forecast, has solidified confidence in the Indian market's trajectory. Foreign institutional investors have also shown renewed interest, with significant inflows recorded over the past week. Experts predict that if this momentum continues, the Nifty 50 could see further gains in the coming quarter.";
+
 export function NewsAnalyzer() {
   const [state, formAction] = useFormState(handleAnalyzeNews, initialState);
   const { toast } = useToast();
-  const formRef = useRef<HTMLFormElement>(null);
+
+  const [ticker, setTicker] = useState('NIFTY 50');
+  const [headline, setHeadline] = useState(sampleHeadline);
+  const [content, setContent] = useState(sampleContent);
 
   useEffect(() => {
     if (state.message && state.message !== 'Analysis successful.') {
@@ -48,7 +54,9 @@ export function NewsAnalyzer() {
         })
     }
     if (state.message === 'Analysis successful.') {
-      formRef.current?.reset();
+      setTicker('');
+      setHeadline('');
+      setContent('');
     }
   }, [state, toast]);
 
@@ -72,21 +80,21 @@ export function NewsAnalyzer() {
         <CardTitle>AI News Analyzer</CardTitle>
         <CardDescription>Get AI-driven sentiment analysis on news affecting your stocks.</CardDescription>
       </CardHeader>
-      <form action={formAction} ref={formRef}>
+      <form action={formAction}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ticker">Stock/Index Symbol</Label>
-            <Input id="ticker" name="ticker" placeholder="e.g., NIFTY_50, RELIANCE" required />
+            <Input id="ticker" name="ticker" placeholder="e.g., NIFTY_50, RELIANCE" required value={ticker} onChange={(e) => setTicker(e.target.value)} />
             {state.fields?.ticker && <p className="text-sm text-destructive">{state.fields.ticker}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="newsHeadline">News Headline</Label>
-            <Input id="newsHeadline" name="newsHeadline" placeholder="Enter the news headline" required />
+            <Input id="newsHeadline" name="newsHeadline" placeholder="Enter the news headline" required value={headline} onChange={(e) => setHeadline(e.target.value)} />
             {state.fields?.newsHeadline && <p className="text-sm text-destructive">{state.fields.newsHeadline}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="newsContent">News Content</Label>
-            <Textarea id="newsContent" name="newsContent" placeholder="Paste the full news article content here" className="min-h-32" required/>
+            <Textarea id="newsContent" name="newsContent" placeholder="Paste the full news article content here" className="min-h-32" required value={content} onChange={(e) => setContent(e.target.value)} />
             {state.fields?.newsContent && <p className="text-sm text-destructive">{state.fields.newsContent}</p>}
           </div>
         </CardContent>
