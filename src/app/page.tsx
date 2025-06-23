@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Alert } from '@/components/ui/alert';
 
 // -- Option Chain Component defined locally --
 const OptionTable = ({ title, options, isCall, underlyingPrice }: { title: string, options: Option[], isCall: boolean, underlyingPrice: number }) => (
@@ -156,7 +157,7 @@ export default function Home() {
         </div>
       </main>
       <footer className="p-4 border-t text-center text-sm text-muted-foreground">
-        NiftyPulse &copy; {new Date().getFullYear()} - Financial data is simulated.
+        NiftyPulse &copy; {new Date().getFullYear()} - Financial data is for demonstration purposes only.
       </footer>
     </div>
   );
