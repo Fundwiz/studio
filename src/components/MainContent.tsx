@@ -112,7 +112,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[600px] rounded-md border" ref={scrollAreaRef}>
+                <ScrollArea className="h-[600px] w-full rounded-md border" ref={scrollAreaRef}>
                     <Table className="min-w-[1200px]">
                         <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
                             <TableRow>
@@ -214,8 +214,8 @@ type MainContentProps = {
 
 export function MainContent({ indices, optionChain }: MainContentProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="lg:col-span-3 space-y-6">
         <DataInfo />
         <Card>
           <CardHeader>
