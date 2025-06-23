@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import {
   Card,
@@ -28,20 +29,28 @@ import type { OptionChain } from '@/lib/types';
 
 const chartConfig = {
   callOi: {
-    label: 'Call chng_oi',
-    color: 'hsl(200 80% 80%)',
+    label: 'Call OI Change',
+    color: 'hsl(var(--chart-1))',
   },
   putOi: {
-    label: 'Put chng_oi',
-    color: 'hsl(140 60% 35%)',
+    label: 'Put OI Change',
+    color: 'hsl(var(--chart-2))',
   },
   callLtp: {
     label: 'Call LTP%',
-    color: 'hsl(var(--chart-1))',
+    color: 'hsl(var(--chart-4))',
   },
   putLtp: {
     label: 'Put LTP%',
-    color: 'hsl(270 70% 50%)',
+    color: 'hsl(var(--chart-5))',
+  },
+  support: {
+    label: 'Support',
+    color: 'hsl(var(--chart-2))',
+  },
+  resistance: {
+    label: 'Resistance',
+    color: 'hsl(var(--chart-1))',
   },
 } satisfies ChartConfig;
 
@@ -50,8 +59,8 @@ export function OptionChainChart({
 }: {
   optionChain: OptionChain | null;
 }) {
-  const chartData = useMemo(() => {
-    if (!optionChain) return [];
+  const { chartData, resistance, support } = useMemo(() => {
+    if (!optionChain) return { chartData: [], resistance: 0, support: 0 };
 
     const { calls, puts, underlyingPrice } = optionChain;
     const strikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])].sort((a, b) => a - b);
@@ -61,18 +70,21 @@ export function OptionChainChart({
     const processedData = strikes.map((strike) => {
       const call = callMap.get(strike);
       const put = putMap.get(strike);
-
       const callPrevLtp = call ? call.ltp - call.chng : 0;
       const putPrevLtp = put ? put.ltp - put.chng : 0;
-
       return {
         strike: strike,
         callOi: call?.chngInOI ?? 0,
         putOi: put?.chngInOI ?? 0,
+        callTotalOi: call?.oi ?? 0,
+        putTotalOi: put?.oi ?? 0,
         callLtp: callPrevLtp !== 0 ? (call.chng / callPrevLtp) * 100 : 0,
         putLtp: putPrevLtp !== 0 ? (put.chng / putPrevLtp) * 100 : 0,
       };
     });
+
+    const resistance = processedData.reduce((max, d) => d.callTotalOi > max.callTotalOi ? d : max, { callTotalOi: -1, strike: 0 }).strike;
+    const support = processedData.reduce((max, d) => d.putTotalOi > max.putTotalOi ? d : max, { putTotalOi: -1, strike: 0 }).strike;
 
     // Filter to show a range of strikes around the underlying price
     const strikeRange = 10;
@@ -81,13 +93,13 @@ export function OptionChainChart({
         { strike: 0 }
     ).strike;
     
-    if (closestStrike === 0) return processedData.slice(0, 20); // Fallback for empty data
+    if (closestStrike === 0) return { chartData: processedData.slice(0, 20), resistance, support };
 
     const closestIndex = processedData.findIndex(d => d.strike === closestStrike);
     const startIndex = Math.max(0, closestIndex - strikeRange);
     const endIndex = Math.min(processedData.length, closestIndex + strikeRange + 1);
 
-    return processedData.slice(startIndex, endIndex);
+    return { chartData: processedData.slice(startIndex, endIndex), resistance, support };
 
   }, [optionChain]);
 
@@ -106,7 +118,7 @@ export function OptionChainChart({
       </Card>
     );
   }
-  const range = [chartData[0].strike, chartData[chartData.length-1].strike]
+  const range = chartData.length > 1 ? [chartData[0].strike, chartData[chartData.length-1].strike] : [0,0];
 
   return (
     <Card>
@@ -137,7 +149,7 @@ export function OptionChainChart({
                 tickLine={false}
                 axisLine={false}
                 label={{ value: 'Change in OI', angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' } }}
-                tickFormatter={(value) => `${(value / 1e6).toFixed(1)}M`}
+                tickFormatter={(value) => `${(value / 1e5).toFixed(1)}L`}
               />
               <YAxis
                 yAxisId="right"
@@ -154,14 +166,14 @@ export function OptionChainChart({
               <Bar
                 yAxisId="left"
                 dataKey="callOi"
-                name="Call chnge_oi"
+                name={chartConfig.callOi.label}
                 fill={chartConfig.callOi.color}
                 stackId="a"
               />
               <Bar
                 yAxisId="left"
                 dataKey="putOi"
-                name="Put chnge_oi"
+                name={chartConfig.putOi.label}
                 fill={chartConfig.putOi.color}
                 stackId="a"
               />
@@ -169,7 +181,7 @@ export function OptionChainChart({
                 yAxisId="right"
                 type="monotone"
                 dataKey="callLtp"
-                name="Call LTP%"
+                name={chartConfig.callLtp.label}
                 stroke={chartConfig.callLtp.color}
                 strokeWidth={2}
                 dot={{ r: 4, fill: chartConfig.callLtp.color }}
@@ -179,12 +191,41 @@ export function OptionChainChart({
                 yAxisId="right"
                 type="monotone"
                 dataKey="putLtp"
-                name="Put LTP%"
+                name={chartConfig.putLtp.label}
                 stroke={chartConfig.putLtp.color}
                 strokeWidth={2}
                 dot={{ r: 4, fill: chartConfig.putLtp.color }}
                 strokeDasharray="5 5"
               />
+
+              <ReferenceLine
+                x={support}
+                stroke={chartConfig.support.color}
+                strokeDasharray="4 4"
+                ifOverflow="visible"
+                yAxisId="left"
+                label={{
+                    value: `Support`,
+                    position: 'insideTopLeft',
+                    fill: chartConfig.support.color,
+                    fontSize: 12,
+                }}
+              />
+              <ReferenceLine
+                x={resistance}
+                stroke={chartConfig.resistance.color}
+                strokeDasharray="4 4"
+                ifOverflow="visible"
+                yAxisId="left"
+                label={{
+                    value: `Resistance`,
+                    position: 'insideTopRight',
+                    fill: chartConfig.resistance.color,
+                    fontSize: 12,
+                }}
+              />
+               <Line dataKey="dummySupport" name={`Support @ ${support}`} stroke={chartConfig.support.color} strokeDasharray="3 3" visibility="hidden" />
+               <Line dataKey="dummyResistance" name={`Resistance @ ${resistance}`} stroke={chartConfig.resistance.color} strokeDasharray="3 3" visibility="hidden" />
             </ComposedChart>
           </ResponsiveContainer>
         </ChartContainer>
