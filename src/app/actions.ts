@@ -1,8 +1,8 @@
 'use server';
 import { z } from 'zod';
 import {
-  analyzeNewsSentiment,
-  type AnalyzeNewsSentimentOutput,
+  analyzeMarketSentiment,
+  type AnalyzeMarketSentimentOutput,
 } from '@/ai/flows/analyze-news-sentiment';
 
 const FormSchema = z.object({
@@ -14,10 +14,10 @@ const FormSchema = z.object({
 export type FormState = {
   message: string;
   fields?: Record<string, string>;
-  result?: AnalyzeNewsSentimentOutput;
+  result?: AnalyzeMarketSentimentOutput;
 };
 
-export async function handleAnalyzeNews(
+export async function handleAnalyzeMarketSentiment(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
@@ -35,7 +35,7 @@ export async function handleAnalyzeNews(
   }
 
   try {
-    const result = await analyzeNewsSentiment(validatedFields.data);
+    const result = await analyzeMarketSentiment(validatedFields.data);
     return {
       message: 'Analysis successful.',
       result,

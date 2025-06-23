@@ -2,7 +2,7 @@
 import * as React from 'react';
 import type { ElementRef } from 'react';
 import { StockList } from '@/components/StockList';
-import { NewsAnalyzer } from '@/components/NewsAnalyzer';
+import { MarketSentimentAnalyzer } from '@/components/NewsAnalyzer';
 import { DataInfo } from '@/components/DataInfo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -183,7 +183,7 @@ export function MainContent({ indices, optionChain }: MainContentProps) {
         <OptionChain optionChain={optionChain} />
       </div>
       <div className="lg:col-span-1">
-          <NewsAnalyzer />
+          <MarketSentimentAnalyzer />
       </div>
     </div>
   );

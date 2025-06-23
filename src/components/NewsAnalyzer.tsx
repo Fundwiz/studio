@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { handleAnalyzeNews, type FormState } from '@/app/actions';
-import { Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { handleAnalyzeMarketSentiment, type FormState } from '@/app/actions';
+import { BrainCircuit, Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -25,7 +25,7 @@ function SubmitButton() {
   return (
     <Button type="submit" disabled={pending} className="w-full bg-accent hover:bg-accent/90">
       {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      Analyze Sentiment
+      Analyze Market
     </Button>
   );
 }
@@ -37,8 +37,8 @@ const initialState: FormState = {
 const sampleHeadline = "Economic Reforms and Strong GDP Growth Propel Nifty 50 to Record Highs";
 const sampleContent = "India's benchmark Nifty 50 index surged to an all-time high today, driven by a wave of investor optimism following the announcement of significant economic reforms. The government's new policies, aimed at boosting manufacturing and simplifying tax structures, have been widely praised by market analysts. This, combined with a stronger-than-expected GDP growth forecast, has solidified confidence in the Indian market's trajectory. Foreign institutional investors have also shown renewed interest, with significant inflows recorded over the past week. Experts predict that if this momentum continues, the Nifty 50 could see further gains in the coming quarter.";
 
-export function NewsAnalyzer() {
-  const [state, formAction] = useFormState(handleAnalyzeNews, initialState);
+export function MarketSentimentAnalyzer() {
+  const [state, formAction] = useFormState(handleAnalyzeMarketSentiment, initialState);
   const { toast } = useToast();
 
   const [ticker, setTicker] = useState('NIFTY 50');
@@ -62,10 +62,10 @@ export function NewsAnalyzer() {
     if (!sentiment) return null;
     const sentimentLower = sentiment.toLowerCase();
 
-    if (sentimentLower === 'positive') {
+    if (sentimentLower === 'bullish') {
       return <TrendingUp className="h-10 w-10 text-green-500" />;
     }
-    if (sentimentLower === 'negative') {
+    if (sentimentLower === 'bearish') {
       return <TrendingDown className="h-10 w-10 text-red-500" />;
     }
     return <Minus className="h-10 w-10 text-muted-foreground" />;
@@ -74,8 +74,11 @@ export function NewsAnalyzer() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>AI News Analyzer</CardTitle>
-        <CardDescription>Get AI-driven sentiment analysis on news affecting your stocks. For major indices, it will also analyze FII/DII data.</CardDescription>
+        <div className="flex items-center gap-2">
+            <BrainCircuit className="h-6 w-6 text-accent"/>
+            <CardTitle>AI Market Analyst</CardTitle>
+        </div>
+        <CardDescription>Get a holistic market analysis for NIFTY 50. The AI synthesizes news, option chain data, and FII/DII activity.</CardDescription>
       </CardHeader>
       <form action={formAction}>
         <CardContent className="space-y-4">
@@ -104,15 +107,15 @@ export function NewsAnalyzer() {
         <CardContent>
            <Alert className={cn(
              "border-2",
-             state.result.sentiment.toLowerCase() === 'positive' && "border-green-500/50",
-             state.result.sentiment.toLowerCase() === 'negative' && "border-red-500/50",
+             state.result.overallSentiment.toLowerCase() === 'bullish' && "border-green-500/50",
+             state.result.overallSentiment.toLowerCase() === 'bearish' && "border-red-500/50",
            )}>
             <div className="flex items-start gap-4">
-                <SentimentIndicator sentiment={state.result.sentiment} />
+                <SentimentIndicator sentiment={state.result.overallSentiment} />
                 <div className="flex-1">
-                    <AlertTitle className="text-lg capitalize">{state.result.sentiment} Sentiment</AlertTitle>
-                    <AlertDescription className="mt-2 text-foreground/80">
-                        {state.result.summary}
+                    <AlertTitle className="text-lg capitalize">{state.result.overallSentiment} Sentiment</AlertTitle>
+                    <AlertDescription className="mt-2 text-foreground/80 whitespace-pre-wrap">
+                        {state.result.detailedAnalysis}
                     </AlertDescription>
                 </div>
             </div>
