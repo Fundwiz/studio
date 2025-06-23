@@ -66,12 +66,20 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
             } as Index;
         } else {
              console.warn(`No live data for ${symbol}. API Response:`, quote.Error || 'Empty success array');
+             // Fallback to mock for this specific index if it fails
              return initialIndices.find(i => i.symbol === symbol)!;
         }
     });
 
     const results = await Promise.all(quotePromises);
-    return { data: results.filter(r => r), source: 'live' };
+    const successfulResults = results.filter(r => r);
+
+    // If all requests failed, fallback entirely to mock
+    if (successfulResults.length === 0) {
+        throw new Error("All live data requests failed.");
+    }
+
+    return { data: successfulResults, source: 'live' };
   } catch(error: any) {
     console.error("Failed to fetch live initial indices, falling back to all mock data.", error);
     return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock', error: `Failed to fetch live indices. ${error.message}` };
@@ -83,8 +91,10 @@ export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<Fetc
         return { data: updateIndexPrices(currentIndices), source: 'mock' };
     }
     
+    // This function re-fetches all indices to get the latest prices
     const liveDataResult = await fetchInitialIndices();
     if (liveDataResult.source === 'live') {
+        // Map previous prices to new data for animation
         const updatedData = liveDataResult.data.map(liveIndex => {
             const prevIndex = currentIndices.find(c => c.symbol === liveIndex.symbol);
             return {
@@ -95,6 +105,7 @@ export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<Fetc
         return { ...liveDataResult, data: updatedData };
     }
     
+    // If live fetch fails, use mock data updater
     return { data: updateIndexPrices(currentIndices), source: 'mock', error: liveDataResult.error };
 }
 
@@ -106,12 +117,18 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
     try {
         const breeze = await getBreezeInstance();
         
+        // Find the next weekly expiry (Thursday)
         const today = new Date();
-        const dayOfWeek = today.getDay(); 
+        const dayOfWeek = today.getDay(); // Sunday is 0, Thursday is 4
+        // Calculate days to add to get to the next Thursday
         const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-        const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11;
+        
+        // If today is Thursday and market is closed, get next week's expiry
+        const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11; // 11 UTC is 4:30 PM IST
         const daysToAdd = daysUntilThursday === 0 && isPastMarketHoursOnExpiry ? 7 : daysUntilThursday;
+        
         const nextThursday = addDays(today, daysToAdd);
+        // The API expects this specific time format.
         const expiryDate = format(nextThursday, "yyyy-MM-dd'T'05:30:00.000Z");
 
         const optionData = await breeze.getOptionChainQuotes({
@@ -119,8 +136,8 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
             exchangeCode: "NFO",
             productType: "options",
             expiryDate: expiryDate,
-            right: "others",
-            strikePrice: ""
+            right: "others", // Fetches both Calls and Puts
+            strikePrice: "" // Fetches for all strike prices
         });
 
         if (!optionData.Success || optionData.Success.length === 0) {
