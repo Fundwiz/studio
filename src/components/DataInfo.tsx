@@ -63,7 +63,7 @@ export function DataInfo({ status, error }: DataInfoProps) {
                         {error}
                     </AlertDescription>
                 </Alert>
-                <p className="text-xs text-muted-foreground pt-2">Verify your API key, secret, and session token in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file are correct and that your session token has not expired.</p>
+                <p className="text-xs text-muted-foreground pt-2">Verify your credentials in the <code className="mx-1 p-1 rounded bg-muted font-mono text-xs">.env</code> file are correct. Note that session tokens expire and may need to be regenerated. Also ensure the hosting environment can reach the Breeze API servers.</p>
             </>
         ) : (
             <>

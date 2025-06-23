@@ -1,6 +1,4 @@
 'use server';
-import { config } from 'dotenv';
-config(); // Load environment variables from .env file
 
 import type { Index, Option, OptionChain, FetchedData } from '@/lib/types';
 import { initialIndices, updateIndexPrices, getMockOptionChain } from '@/lib/mock-data';
