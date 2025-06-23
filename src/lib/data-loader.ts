@@ -106,6 +106,8 @@ const generateOptions = (isCall: boolean, underlyingPrice: number, strikes: numb
             volume: 100000 + Math.floor(Math.random() * 1000000),
             bid: ltp - 0.05,
             ask: ltp + 0.05,
+            bidQty: Math.floor(Math.random() * 3500000),
+            askQty: Math.floor(Math.random() * 1500000),
         };
     });
 };

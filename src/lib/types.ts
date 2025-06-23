@@ -17,6 +17,8 @@ export type Option = {
     volume: number;
     bid: number;
     ask: number;
+    bidQty?: number;
+    askQty?: number;
     prevLtp?: number;
 };
 

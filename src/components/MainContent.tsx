@@ -19,6 +19,7 @@ import type { Option, OptionChain as OptionChainType, Index } from '@/lib/types'
 import { OptionChainChart } from './OptionChainChart';
 import { OpenInterestChart } from './OpenInterestChart';
 import { MaxPainChart } from './MaxPainChart';
+import { BuySellChart } from './BuySellChart';
 
 const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
     const getBuildupText = (option: Option | undefined): { text: string; className: string } => {
@@ -54,7 +55,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
 
     const { calls, puts, underlyingPrice } = optionChain;
 
-    const strikes = [...new Set([...calls.map(c => c.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
+    const strikes = [...new Set([...calls.map(item => item.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
     const callMap = new Map(calls.map(item => [item.strike, item]));
     const putMap = new Map(puts.map(item => [item.strike, item]));
 
@@ -232,6 +233,8 @@ export function MainContent({ indices, optionChain, maxPainHistory }: MainConten
         <OpenInterestChart optionChain={optionChain} />
         <OptionChainChart optionChain={optionChain} />
         <MaxPainChart optionChain={optionChain} maxPainHistory={maxPainHistory} />
+        <BuySellChart optionChain={optionChain} type="Call" />
+        <BuySellChart optionChain={optionChain} type="Put" />
         <OptionChainTable optionChain={optionChain} />
       </div>
       <div className="xl:col-span-1">
