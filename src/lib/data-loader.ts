@@ -7,6 +7,11 @@ import type { Index, Option, OptionChain } from '@/lib/types';
 
 // A generic CSV parsing function
 function parseCSV<T>(filePath: string): Promise<T[]> {
+  // Check if file exists before trying to read
+  if (!fs.existsSync(filePath)) {
+    console.warn(`CSV file not found: ${filePath}. Returning empty array.`);
+    return Promise.resolve([]);
+  }
   const csvFile = fs.readFileSync(filePath, 'utf8');
   return new Promise((resolve, reject) => {
     Papa.parse<T>(csvFile, {
@@ -15,12 +20,13 @@ function parseCSV<T>(filePath: string): Promise<T[]> {
       skipEmptyLines: true,
       complete: (results) => {
         if (results.errors.length) {
-          reject(results.errors);
-        } else {
-          resolve(results.data);
+          // Log errors but don't reject, just resolve with what we have
+          console.error(`Errors parsing ${filePath}:`, results.errors);
         }
+        resolve(results.data);
       },
       error: (error) => {
+        // Reject on critical file read errors
         reject(error);
       },
     });
@@ -56,7 +62,12 @@ export async function loadIndicesData(): Promise<Index[]> {
     const latestTick = niftyData[niftyData.length - 1];
 
     if (!latestTick) {
-        throw new Error("nifty_tick.csv is empty or invalid.");
+        console.warn("nifty_tick.csv is empty or invalid. Using fallback data.");
+        // Use a default Nifty50 object if the file is empty
+         return [
+            { symbol: 'NIFTY 50', name: 'NIFTY 50', price: 22500, change: 150.75, changePercent: 0.67, prevPrice: 22349.25 },
+            ...otherIndices
+        ];
     }
 
     const price = latestTick.LTP || 0;
@@ -85,9 +96,9 @@ export async function loadIndicesData(): Promise<Index[]> {
 }
 
 // --- Option Chain Data Interface from user's CSV ---
+// OI data has following fields : LocalTime	last	high	low	change	avgPrice	OI	ttq	totalBuyQt	totalSellQ	ttv	ltt	bPrice	bQty	sPrice	sQty	ltq
 interface RawOptionData {
     strike: number;
-    type: 'call' | 'put';
     last: number; // ltp
     change: number; // chng
     OI: number; // oi
@@ -101,10 +112,15 @@ interface RawOptionData {
 
 export async function loadOptionChainData(underlyingPrice: number): Promise<OptionChain | null> {
     try {
-        const optionChainPath = path.join(process.cwd(), 'src', 'data', 'option_chain.csv');
-        const rawOptionsData = await parseCSV<RawOptionData>(optionChainPath);
+        const callsPath = path.join(process.cwd(), 'src', 'data', 'calls.csv');
+        const putsPath = path.join(process.cwd(), 'src', 'data', 'puts.csv');
 
-        const transformedOptions: (Option & {type: 'call' | 'put'})[] = rawOptionsData.map(o => ({
+        const [rawCallsData, rawPutsData] = await Promise.all([
+          parseCSV<RawOptionData>(callsPath),
+          parseCSV<RawOptionData>(putsPath)
+        ]);
+
+        const transformOption = (o: RawOptionData): Option => ({
             strike: o.strike || 0,
             ltp: o.last || 0,
             chng: o.change || 0,
@@ -112,17 +128,16 @@ export async function loadOptionChainData(underlyingPrice: number): Promise<Opti
             volume: o.ttq || 0,
             bid: o.bPrice || 0,
             ask: o.sPrice || 0,
-            type: o.type,
-        }));
+        });
 
-        const calls = transformedOptions
-            .filter(o => o.type === 'call' && o.strike)
-            .map(({ type, ...rest }) => rest)
+        const calls = rawCallsData
+            .map(transformOption)
+            .filter(o => o.strike)
             .sort((a,b) => a.strike - b.strike);
         
-        const puts = transformedOptions
-            .filter(o => o.type === 'put' && o.strike)
-            .map(({ type, ...rest }) => rest)
+        const puts = rawPutsData
+            .map(transformOption)
+            .filter(o => o.strike)
             .sort((a,b) => a.strike - b.strike);
         
         return {
