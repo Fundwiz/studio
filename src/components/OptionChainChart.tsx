@@ -29,19 +29,19 @@ import type { OptionChain } from '@/lib/types';
 
 const chartConfig = {
   callOi: {
-    label: 'Call OI Change',
+    label: 'Call OI',
     color: 'hsl(var(--chart-1))',
   },
   putOi: {
-    label: 'Put OI Change',
+    label: 'Put OI',
     color: 'hsl(var(--chart-2))',
   },
   callLtp: {
-    label: 'Call LTP%',
+    label: 'Call LTP',
     color: 'hsl(var(--chart-4))',
   },
   putLtp: {
-    label: 'Put LTP%',
+    label: 'Put LTP',
     color: 'hsl(var(--chart-5))',
   },
   support: {
@@ -70,22 +70,17 @@ export function OptionChainChart({
     const processedData = strikes.map((strike) => {
       const call = callMap.get(strike);
       const put = putMap.get(strike);
-      const callPrevLtp = call ? call.ltp - call.chng : 0;
-      const putPrevLtp = put ? put.ltp - put.chng : 0;
       return {
         strike: strike,
-        callOi: call?.chngInOI ?? 0,
-        putOi: put?.chngInOI ?? 0,
-        callTotalOi: call?.oi ?? 0,
-        putTotalOi: put?.oi ?? 0,
-        callLtp: callPrevLtp !== 0 ? (call.chng / callPrevLtp) * 100 : 0,
-        putLtp: putPrevLtp !== 0 ? (put.chng / putPrevLtp) * 100 : 0,
+        callOi: call?.oi ?? 0,
+        putOi: put?.oi ?? 0,
+        callLtp: call?.ltp ?? 0,
+        putLtp: put?.ltp ?? 0,
       };
     });
 
-    // Sort by OI to find top 2 for support and resistance
-    const callsByOi = [...processedData].sort((a, b) => b.callTotalOi - a.callTotalOi);
-    const putsByOi = [...processedData].sort((a, b) => b.putTotalOi - a.putTotalOi);
+    const callsByOi = [...processedData].sort((a, b) => b.callOi - a.callOi);
+    const putsByOi = [...processedData].sort((a, b) => b.putOi - a.putOi);
 
     const resistance1 = callsByOi[0]?.strike ?? 0;
     const resistance2 = callsByOi[1]?.strike ?? 0;
@@ -100,7 +95,7 @@ export function OptionChainChart({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Change in OI & LTP%</CardTitle>
+          <CardTitle>OI & LTP Analysis</CardTitle>
           <CardDescription>No data available to display chart.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -116,10 +111,9 @@ export function OptionChainChart({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change in OI & LTP% ({range[0]}-{range[1]})</CardTitle>
+        <CardTitle>OI & LTP Analysis ({range[0]}-{range[1]})</CardTitle>
         <CardDescription>
-          Visual analysis of Open Interest and Price changes across strike
-          prices.
+          Visual analysis of Total Open Interest and Last Traded Price across strike prices.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -142,7 +136,7 @@ export function OptionChainChart({
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                label={{ value: 'Change in OI', angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' } }}
+                label={{ value: 'Total Open Interest', angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' } }}
                 tickFormatter={(value) => `${(value / 1e5).toFixed(1)}L`}
               />
               <YAxis
@@ -152,7 +146,7 @@ export function OptionChainChart({
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                label={{ value: 'LTP % Change', angle: 90, position: 'insideRight', offset: 10, style: { textAnchor: 'middle' } }}
+                label={{ value: 'Last Traded Price (₹)', angle: 90, position: 'insideRight', offset: 10, style: { textAnchor: 'middle' } }}
                 tickFormatter={(value) => value.toFixed(0)}
               />
               <Tooltip content={<ChartTooltipContent />} />
@@ -162,14 +156,12 @@ export function OptionChainChart({
                 dataKey="callOi"
                 name={chartConfig.callOi.label}
                 fill={chartConfig.callOi.color}
-                stackId="a"
               />
               <Bar
                 yAxisId="left"
                 dataKey="putOi"
                 name={chartConfig.putOi.label}
                 fill={chartConfig.putOi.color}
-                stackId="a"
               />
               <Line
                 yAxisId="right"
@@ -178,8 +170,7 @@ export function OptionChainChart({
                 name={chartConfig.callLtp.label}
                 stroke={chartConfig.callLtp.color}
                 strokeWidth={2}
-                dot={{ r: 4, fill: chartConfig.callLtp.color }}
-                strokeDasharray="5 5"
+                dot={false}
               />
               <Line
                 yAxisId="right"
@@ -188,8 +179,7 @@ export function OptionChainChart({
                 name={chartConfig.putLtp.label}
                 stroke={chartConfig.putLtp.color}
                 strokeWidth={2}
-                dot={{ r: 4, fill: chartConfig.putLtp.color }}
-                strokeDasharray="5 5"
+                dot={false}
               />
 
               <ReferenceLine
