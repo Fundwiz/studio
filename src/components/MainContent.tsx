@@ -20,6 +20,24 @@ import { OptionChainChart } from './OptionChainChart';
 import { MaxPainChart } from './MaxPainChart';
 
 const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null }) => {
+    const getBuildupText = (option: Option | undefined): { text: string; className: string } => {
+        if (!option || typeof option.chngInOI !== 'number' || typeof option.chng !== 'number') {
+            return { text: '—', className: 'text-muted-foreground' };
+        }
+
+        const priceChangedUp = option.chng > 0;
+        const priceChangedDown = option.chng < 0;
+        const oiChangedUp = option.chngInOI > 0;
+        const oiChangedDown = option.chngInOI < 0;
+
+        if (priceChangedUp && oiChangedUp) return { text: 'Long Buildup', className: 'text-green-400' };
+        if (priceChangedDown && oiChangedUp) return { text: 'Short Buildup', className: 'text-red-400' };
+        if (priceChangedDown && oiChangedDown) return { text: 'Long Unwinding', className: 'text-orange-400' };
+        if (priceChangedUp && oiChangedDown) return { text: 'Short Covering', className: 'text-yellow-400' };
+        
+        return { text: '—', className: 'text-muted-foreground' };
+    };
+
     if (!optionChain || (optionChain.calls.length === 0 && optionChain.puts.length === 0)) {
         return (
             <Card>
@@ -98,21 +116,23 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                     <Table>
                         <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
                             <TableRow>
-                                <TableHead className='p-2 text-center text-green-400 font-bold' colSpan={4}>CALLS</TableHead>
+                                <TableHead className='p-2 text-center text-green-400 font-bold' colSpan={5}>CALLS</TableHead>
                                 <TableHead className='p-2 text-center border-l border-r' colSpan={3}>STRIKE &amp; PCR</TableHead>
-                                <TableHead className='p-2 text-center text-red-400 font-bold' colSpan={4}>PUTS</TableHead>
+                                <TableHead className='p-2 text-center text-red-400 font-bold' colSpan={5}>PUTS</TableHead>
                             </TableRow>
                             <TableRow>
                                 <TableHead className='p-2'>OI</TableHead>
+                                <TableHead className='p-2'>Buildup</TableHead>
                                 <TableHead className='p-2'>Volume</TableHead>
-                                <TableHead className='p-2'>Chng %</TableHead>
+                                <TableHead className='p-2'>Chng</TableHead>
                                 <TableHead className='p-2'>LTP</TableHead>
                                 <TableHead className="text-center p-2 font-bold border-l">STRIKE</TableHead>
                                 <TableHead className="text-center p-2">OI PCR</TableHead>
                                 <TableHead className="text-center p-2 border-r">VOL PCR</TableHead>
                                 <TableHead className='p-2 text-right'>LTP</TableHead>
-                                <TableHead className='p-2 text-right'>Chng %</TableHead>
+                                <TableHead className='p-2 text-right'>Chng</TableHead>
                                 <TableHead className='p-2 text-right'>Volume</TableHead>
+                                <TableHead className='p-2 text-right'>Buildup</TableHead>
                                 <TableHead className='p-2 text-right'>OI</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -127,6 +147,8 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 const volPcr = (item.put?.volume && item.call?.volume && item.call.volume > 0)
                                     ? (item.put.volume / item.call.volume).toFixed(2)
                                     : '-';
+                                const callBuildup = getBuildupText(item.call);
+                                const putBuildup = getBuildupText(item.put);
                                     
                                 return (
                                     <TableRow 
@@ -137,6 +159,9 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         {/* Call Data */}
                                         <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
                                             {item.call ? `${(item.call.oi / 100000).toFixed(2)}L` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2 font-medium whitespace-nowrap', callBuildup.className, callITM && "bg-green-900/40")}>
+                                            {callBuildup.text}
                                         </TableCell>
                                         <TableCell className={cn('p-2', callITM && "bg-green-900/40")}>
                                             {item.call ? `${(item.call.volume / 1000).toFixed(2)}K` : '-'}
@@ -164,6 +189,9 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         </TableCell>
                                         <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
                                             {item.put ? `${(item.put.volume / 1000).toFixed(2)}K` : '-'}
+                                        </TableCell>
+                                        <TableCell className={cn('p-2 text-right font-medium whitespace-nowrap', putBuildup.className, putITM && "bg-red-900/40")}>
+                                            {putBuildup.text}
                                         </TableCell>
                                         <TableCell className={cn('p-2 text-right', putITM && "bg-red-900/40")}>
                                             {item.put ? `${(item.put.oi / 100000).toFixed(2)}L` : '-'}
