@@ -3,7 +3,7 @@
 import type { Index, Option, OptionChain, FetchedData } from '@/lib/types';
 import { initialIndices, updateIndexPrices, getMockOptionChain } from '@/lib/mock-data';
 import BreezeConnect from 'breezeconnect';
-import { format, addDays, startOfDay, endOfDay } from 'date-fns';
+import { format, addDays } from 'date-fns';
 
 // --- Configuration ---
 const BREEZE_API_KEY = process.env.BREEZE_API_KEY;
@@ -20,23 +20,19 @@ const BREEZE_STOCK_CODES: { [key: string]: { exchange: string; code: string } } 
     'SENSEX': { exchange: 'BSE', code: 'SENSEX' },
 };
 
-let breeze: any | null = null;
-
-if (!USE_MOCK_DATA) {
-    breeze = new BreezeConnect({ appKey: BREEZE_API_KEY! });
-}
-
 // Helper function to initialize the Breeze API session
 async function getBreezeInstance() {
-    if (!breeze) {
+    if (USE_MOCK_DATA) {
         throw new Error("Breeze API not configured. Check environment variables.");
     }
+
     try {
+        const breeze = new BreezeConnect({ appKey: BREEZE_API_KEY! });
         await breeze.generateSession({ apiSecret: BREEZE_API_SECRET!, sessionToken: BREEZE_SESSION_TOKEN! });
         return breeze;
     } catch (error: any) {
         console.error("Breeze API session generation failed:", error);
-        throw new Error(`Failed to generate Breeze API session. Your token may have expired or credentials may be invalid. Original error: ${error.message}`);
+        throw new Error(`Failed to generate Breeze API session. Your session token may have expired or credentials may be invalid. Please regenerate your session token. Original error: ${error.message}`);
     }
 }
 
@@ -53,8 +49,6 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
     const quotePromises = symbols.map(async (symbol) => {
         const { exchange, code } = BREEZE_STOCK_CODES[symbol];
         
-        // Per documentation, getQuotes for the latest price doesn't need date/interval.
-        // Those are for historical data requests and will cause errors here.
         const quote = await breeze.getQuotes({
             stockCode: code,
             exchangeCode: exchange,
@@ -72,7 +66,6 @@ export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
             } as Index;
         } else {
              console.warn(`No live data for ${symbol}. API Response:`, quote.Error || 'Empty success array');
-             // Fallback to mock for this specific index if API fails for it
              return initialIndices.find(i => i.symbol === symbol)!;
         }
     });
@@ -90,7 +83,6 @@ export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<Fetc
         return { data: updateIndexPrices(currentIndices), source: 'mock' };
     }
     
-    // Just re-fetch the initial data which gets the latest quotes
     const liveDataResult = await fetchInitialIndices();
     if (liveDataResult.source === 'live') {
         const updatedData = liveDataResult.data.map(liveIndex => {
@@ -103,7 +95,6 @@ export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<Fetc
         return { ...liveDataResult, data: updatedData };
     }
     
-    // If fetching live data fails, fallback to mock updates
     return { data: updateIndexPrices(currentIndices), source: 'mock', error: liveDataResult.error };
 }
 
@@ -115,11 +106,9 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
     try {
         const breeze = await getBreezeInstance();
         
-        // Find the next weekly expiry (Thursday)
         const today = new Date();
-        const dayOfWeek = today.getDay(); // Sunday is 0, Thursday is 4
+        const dayOfWeek = today.getDay(); 
         const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-        // If it's Thursday past market hours (e.g., after 4 PM UTC, which is late in India), get next week's
         const isPastMarketHoursOnExpiry = dayOfWeek === 4 && new Date().getUTCHours() > 11;
         const daysToAdd = daysUntilThursday === 0 && isPastMarketHoursOnExpiry ? 7 : daysUntilThursday;
         const nextThursday = addDays(today, daysToAdd);
@@ -130,8 +119,8 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<Fetched
             exchangeCode: "NFO",
             productType: "options",
             expiryDate: expiryDate,
-            right: "others", // Fetches both Calls and Puts
-            strikePrice: "" // Empty fetches the entire chain
+            right: "others",
+            strikePrice: ""
         });
 
         if (!optionData.Success || optionData.Success.length === 0) {
