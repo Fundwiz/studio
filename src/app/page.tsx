@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import type { Index, Option, OptionChain as OptionChainType } from '@/lib/types';
+import type { Index, Option, OptionChain as OptionChainType, FetchedData } from '@/lib/types';
 import { fetchInitialIndices, fetchUpdatedIndices, fetchOptionChain } from '@/lib/api';
 import { Header } from '@/components/Header';
 import { StockRibbon } from '@/components/StockRibbon';
@@ -94,26 +94,36 @@ const OptionChain = ({ optionChain }: { optionChain: OptionChainType | null }) =
 export default function Home() {
   const [indices, setIndices] = useState<Index[]>([]);
   const [optionChain, setOptionChain] = useState<OptionChainType | null>(null);
+  const [dataStatus, setDataStatus] = useState<'loading' | 'live' | 'mock'>('loading');
+  const [apiError, setApiError] = useState<string | null>(null);
   const indicesRef = useRef<Index[]>([]);
 
   useEffect(() => {
     const updateData = async () => {
       const currentIndices = indicesRef.current;
-      let dataToUpdate: Index[];
-
-      if (currentIndices.length === 0) {
-        dataToUpdate = await fetchInitialIndices();
-      } else {
-        dataToUpdate = await fetchUpdatedIndices(currentIndices);
-      }
       
-      setIndices(dataToUpdate);
-      indicesRef.current = dataToUpdate;
+      const indicesResult = currentIndices.length === 0
+        ? await fetchInitialIndices()
+        : await fetchUpdatedIndices(currentIndices);
+      
+      setIndices(indicesResult.data);
+      indicesRef.current = indicesResult.data;
 
-      const nifty = dataToUpdate.find(i => i.symbol === 'NIFTY 50');
+      const nifty = indicesResult.data.find(i => i.symbol === 'NIFTY 50');
       if (nifty) {
-        const optionData = await fetchOptionChain(nifty.price);
-        setOptionChain(optionData);
+        const optionChainResult = await fetchOptionChain(nifty.price);
+        setOptionChain(optionChainResult.data);
+
+        if (indicesResult.source === 'live' && optionChainResult.source === 'live') {
+          setDataStatus('live');
+          setApiError(null);
+        } else {
+          setDataStatus('mock');
+          setApiError(indicesResult.error || optionChainResult.error || 'Could not connect to live data feed.');
+        }
+      } else {
+          setDataStatus(indicesResult.source);
+          setApiError(indicesResult.error || 'NIFTY 50 index data not found.');
       }
     };
 
@@ -129,7 +139,7 @@ export default function Home() {
       <main className="flex-1 p-4 md:p-8 container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <DataInfo />
+            <DataInfo status={dataStatus} error={apiError} />
             <Card>
               <CardHeader>
                 <CardTitle>Market Indices</CardTitle>

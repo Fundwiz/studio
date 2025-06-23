@@ -2,7 +2,7 @@
 import { config } from 'dotenv';
 config(); // Load environment variables from .env file
 
-import type { Index, Option, OptionChain } from '@/lib/types';
+import type { Index, Option, OptionChain, FetchedData } from '@/lib/types';
 import { initialIndices, updateIndexPrices, getMockOptionChain } from '@/lib/mock-data';
 import BreezeConnect from 'breezeconnect';
 import { format, addDays } from 'date-fns';
@@ -16,13 +16,15 @@ const USE_MOCK_DATA = !BREEZE_API_KEY || !BREEZE_API_SECRET || !BREEZE_SESSION_T
 
 // Map user-friendly symbols to Breeze API stock codes
 const BREEZE_STOCK_CODES: { [key: string]: { exchange: string; code: string } } = {
-    'NIFTY 50': { exchange: 'NFO', code: 'NIFTY' }, // Note: For indices, different endpoints are often used. This is a simplification.
+    'NIFTY 50': { exchange: 'NFO', code: 'NIFTY' },
     'NIFTY BANK': { exchange: 'NFO', code: 'BANKNIFTY' },
     'NIFTY IT': { exchange: 'NSE', code: 'CNXIT' },
     'SENSEX': { exchange: 'BSE', code: 'SENSEX' },
 };
 
 let breeze: any | null = null;
+let breezeSessionInitialized = false;
+
 if (!USE_MOCK_DATA) {
     breeze = new BreezeConnect({ appKey: BREEZE_API_KEY! });
 }
@@ -32,34 +34,36 @@ async function getBreezeInstance() {
     if (!breeze) {
         throw new Error("Breeze API not initialized.");
     }
+    if (breezeSessionInitialized) {
+        return breeze;
+    }
     try {
         await breeze.generateSession({ apiSecret: BREEZE_API_SECRET!, sessionToken: BREEZE_SESSION_TOKEN! });
+        breezeSessionInitialized = true;
         return breeze;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Breeze API session generation failed:", error);
-        throw new Error("Failed to generate Breeze API session. Check your credentials.");
+        breezeSessionInitialized = false; // allow retry
+        throw new Error(`Failed to generate Breeze API session: ${error.message}. Check your credentials.`);
     }
 }
 
-
-export async function fetchInitialIndices(): Promise<Index[]> {
+export async function fetchInitialIndices(): Promise<FetchedData<Index[]>> {
   if (USE_MOCK_DATA) {
     console.log("Fetching initial indices from mock data (Breeze API credentials not provided).");
-    return Promise.resolve(JSON.parse(JSON.stringify(initialIndices)));
+    return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock' };
   }
 
   try {
     const breeze = await getBreezeInstance();
     const symbols = Object.keys(BREEZE_STOCK_CODES);
     
-    // NOTE: getQuotes may not work for indices directly. You might need a different endpoint like get_names.
-    // This is a simplified example.
     const quotePromises = symbols.map(async (symbol) => {
         const { exchange, code } = BREEZE_STOCK_CODES[symbol];
         const quote = await breeze.getQuotes({
             stockCode: code,
             exchangeCode: exchange,
-            interval: "1minute", // This might not be applicable for all indices
+            interval: "1minute",
             fromDate: format(new Date(), 'yyyy-MM-dd') + "T07:00:00.000Z",
             toDate: format(new Date(), 'yyyy-MM-dd') + "T07:00:00.000Z",
         });
@@ -74,48 +78,45 @@ export async function fetchInitialIndices(): Promise<Index[]> {
                 changePercent: parseFloat(data.percent_change),
             } as Index;
         }
-        // Fallback for this symbol if API fails
         return initialIndices.find(i => i.symbol === symbol)!;
     });
 
     const results = await Promise.all(quotePromises);
-    return results.filter(r => r); // Filter out any undefined results
-  } catch(error) {
+    return { data: results.filter(r => r), source: 'live' };
+  } catch(error: any) {
     console.error("Failed to fetch live initial indices, falling back to mock data.", error);
-    return Promise.resolve(JSON.parse(JSON.stringify(initialIndices)));
+    return { data: JSON.parse(JSON.stringify(initialIndices)), source: 'mock', error: error.message };
   }
 }
 
-export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<Index[]> {
+export async function fetchUpdatedIndices(currentIndices: Index[]): Promise<FetchedData<Index[]>> {
     if (USE_MOCK_DATA) {
-        return Promise.resolve(updateIndexPrices(currentIndices));
+        return { data: updateIndexPrices(currentIndices), source: 'mock' };
     }
     
-    // For live data, we can just re-fetch the initial state as it will be the latest.
-    // A more advanced implementation would use WebSockets if the API supports it.
     try {
-        const liveIndices = await fetchInitialIndices();
-        return liveIndices.map(liveIndex => {
+        const liveData = await fetchInitialIndices();
+        const updatedData = liveData.data.map(liveIndex => {
             const prevIndex = currentIndices.find(c => c.symbol === liveIndex.symbol);
             return {
                 ...liveIndex,
                 prevPrice: prevIndex ? prevIndex.price : liveIndex.price,
             };
         });
-    } catch(error) {
+        return { ...liveData, data: updatedData };
+    } catch(error: any) {
         console.error("Failed to fetch live updated indices, falling back to mock data.", error);
-        return Promise.resolve(updateIndexPrices(currentIndices));
+        return { data: updateIndexPrices(currentIndices), source: 'mock', error: error.message };
     }
 }
 
-export async function fetchOptionChain(underlyingPrice: number): Promise<OptionChain> {
+export async function fetchOptionChain(underlyingPrice: number): Promise<FetchedData<OptionChain>> {
     if (USE_MOCK_DATA) {
-        return Promise.resolve(getMockOptionChain(underlyingPrice));
+        return { data: getMockOptionChain(underlyingPrice), source: 'mock' };
     }
     
     try {
         const breeze = await getBreezeInstance();
-        // Example: Fetching for the next weekly expiry
         const nextThursday = addDays(new Date(), (4 - new Date().getDay() + 7) % 7);
         const expiryDate = format(nextThursday, "yyyy-MM-dd'T06:00:00.000Z'");
 
@@ -124,12 +125,12 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<OptionC
             exchangeCode: "NFO",
             productType: "options",
             expiryDate: expiryDate,
-            right: "others", // Fetches both Calls and Puts
-            strikePrice: "" // All strikes
+            right: "others",
+            strikePrice: ""
         });
 
         if (!optionData.Success) {
-            throw new Error("Failed to fetch option chain from Breeze API.");
+            throw new Error(optionData.Error || "Failed to fetch option chain from Breeze API.");
         }
 
         const transformOption = (breezeOption: any): Option => ({
@@ -147,14 +148,15 @@ export async function fetchOptionChain(underlyingPrice: number): Promise<OptionC
         const calls = optionData.Success.filter((o: any) => o.right === "Call").map(transformOption);
         const puts = optionData.Success.filter((o: any) => o.right === "Put").map(transformOption);
 
-        return {
+        const data = {
             calls: calls.sort((a,b) => a.strike - b.strike),
             puts: puts.sort((a,b) => a.strike - b.strike),
-            underlyingPrice: underlyingPrice // Can be updated with a more direct quote if needed
+            underlyingPrice: underlyingPrice
         };
+        return { data, source: 'live' };
 
-    } catch(error) {
+    } catch(error: any) {
         console.error("Failed to fetch live option chain, falling back to mock data.", error);
-        return Promise.resolve(getMockOptionChain(underlyingPrice));
+        return { data: getMockOptionChain(underlyingPrice), source: 'mock', error: error.message };
     }
 }
