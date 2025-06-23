@@ -21,7 +21,7 @@ export function StockRibbon({ stocks }: StockRibbonProps) {
             return (
               <div key={`${stock.symbol}-${index}`} className="flex items-center gap-2 text-sm">
                 <span className="font-semibold text-foreground">{stock.symbol}</span>
-                <span className="text-muted-foreground">${stock.price.toFixed(2)}</span>
+                <span className="text-muted-foreground">₹{stock.price.toFixed(2)}</span>
                 <div
                   className={cn(
                     'flex items-center gap-1 text-xs',

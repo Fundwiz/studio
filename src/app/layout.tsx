@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'TickerSpark',
-  description: 'AI-Powered Stock Ticker and News Analysis',
+  title: 'NiftyPulse',
+  description: 'Track Nifty and analyze option chains with AI.',
 };
 
 export default function RootLayout({

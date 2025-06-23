@@ -75,8 +75,8 @@ export function NewsAnalyzer() {
       <form action={formAction} ref={formRef}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ticker">Stock Ticker</Label>
-            <Input id="ticker" name="ticker" placeholder="e.g., TSLA" required />
+            <Label htmlFor="ticker">Stock/Index Symbol</Label>
+            <Input id="ticker" name="ticker" placeholder="e.g., NIFTY_50, RELIANCE" required />
             {state.fields?.ticker && <p className="text-sm text-destructive">{state.fields.ticker}</p>}
           </div>
           <div className="space-y-2">

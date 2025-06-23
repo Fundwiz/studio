@@ -1,28 +1,57 @@
-import type { Stock } from '@/lib/types';
+import type { Index, Option, OptionChain } from '@/lib/types';
 
-export const initialStocks: Stock[] = [
-  { symbol: 'AAPL', name: 'Apple Inc.', price: 172.47, change: 1.23, changePercent: 0.72 },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 139.44, change: -0.89, changePercent: -0.63 },
-  { symbol: 'MSFT', name: 'Microsoft Corp.', price: 370.95, change: 2.15, changePercent: 0.58 },
-  { symbol: 'AMZN', name: 'Amazon.com, Inc.', price: 153.84, change: -1.45, changePercent: -0.93 },
-  { symbol: 'TSLA', name: 'Tesla, Inc.', price: 234.30, change: 5.67, changePercent: 2.48 },
-  { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 476.90, change: -3.12, changePercent: -0.65 },
-  { symbol: 'META', name: 'Meta Platforms', price: 334.82, change: 1.98, changePercent: 0.60 },
-  { symbol: 'JPM', name: 'JPMorgan Chase', price: 157.21, change: 0.76, changePercent: 0.49 },
+export const initialIndices: Index[] = [
+  { symbol: 'NIFTY 50', name: 'NIFTY 50', price: 22500, change: 150.75, changePercent: 0.67 },
+  { symbol: 'NIFTY BANK', name: 'NIFTY BANK', price: 48500, change: -250.40, changePercent: -0.51 },
+  { symbol: 'NIFTY IT', name: 'NIFTY IT', price: 34800, change: 300.10, changePercent: 0.87 },
+  { symbol: 'SENSEX', name: 'BSE SENSEX', price: 74000, change: 450.25, changePercent: 0.61 },
 ];
 
-export function updateStockPrices(stocks: Stock[]): Stock[] {
-  return stocks.map(stock => {
-    const change = (Math.random() - 0.5) * (stock.price * 0.02); // up to 2% change
-    const newPrice = Math.max(0, stock.price + change);
-    const changePercent = (change / stock.price) * 100;
+export function updateIndexPrices(indices: Index[]): Index[] {
+  return indices.map(index => {
+    const change = (Math.random() - 0.5) * (index.price * 0.01); // up to 1% change
+    const newPrice = Math.max(0, index.price + change);
+    const changePercent = (change / index.price) * 100;
     
     return {
-      ...stock,
-      prevPrice: stock.price,
+      ...index,
+      prevPrice: index.price,
       price: parseFloat(newPrice.toFixed(2)),
       change: parseFloat(change.toFixed(2)),
       changePercent: parseFloat(changePercent.toFixed(2)),
     };
   });
+};
+
+const generateOptions = (strike: number, isCall: boolean, underlyingPrice: number): Option => {
+    const isITM = isCall ? strike < underlyingPrice : strike > underlyingPrice;
+    const ltp = Math.max(0.05, (isCall ? underlyingPrice - strike : strike - underlyingPrice) + (isITM ? 50 : 10) + (Math.random() * 20 - 10));
+    return {
+        strike,
+        ltp: parseFloat(ltp.toFixed(2)),
+        iv: parseFloat((20 + Math.random() * 10 - (isITM ? 5 : 0)).toFixed(2)),
+        chng: parseFloat(((Math.random() - 0.5) * 10)),
+        chngInOI: Math.floor((Math.random() - 0.4) * 100000),
+        oi: Math.floor(Math.random() * 500000 + (isITM ? 100000 : 20000)),
+        volume: Math.floor(Math.random() * 20000 + 5000),
+        bid: parseFloat((ltp * 0.99).toFixed(2)),
+        ask: parseFloat((ltp * 1.01).toFixed(2)),
+    };
+};
+
+export const getMockOptionChain = (underlyingPrice: number): OptionChain => {
+    const strikes: number[] = [];
+    const baseStrike = Math.round(underlyingPrice / 50) * 50;
+    for (let i = -10; i <= 10; i++) {
+        strikes.push(baseStrike + i * 50);
+    }
+
+    const calls = strikes.map(strike => generateOptions(strike, true, underlyingPrice)).sort((a, b) => a.strike - b.strike);
+    const puts = strikes.map(strike => generateOptions(strike, false, underlyingPrice)).sort((a, b) => a.strike - b.strike);
+
+    return {
+        calls,
+        puts,
+        underlyingPrice
+    };
 };
