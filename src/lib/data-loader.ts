@@ -20,8 +20,8 @@ function parseCSV<T>(filePath: string): Promise<T[]> {
       skipEmptyLines: true,
       complete: (results) => {
         if (results.errors.length) {
-          // Log errors but don't reject, just resolve with what we have
-          console.error(`Errors parsing ${filePath}:`, results.errors);
+          // Log parsing errors as warnings, as the app will filter out malformed rows.
+          console.warn(`Recoverable errors parsing ${filePath}:`, results.errors);
         }
         resolve(results.data);
       },
@@ -43,7 +43,9 @@ const otherIndices: Index[] = [
 
 export async function loadAllNiftyTicks(): Promise<NiftyTick[]> {
     const niftyTickPath = path.join(process.cwd(), 'src', 'data', 'nifty_tick.csv');
-    return parseCSV<NiftyTick>(niftyTickPath);
+    const allTicks = await parseCSV<NiftyTick>(niftyTickPath);
+    // Filter out any malformed rows that might be missing critical data.
+    return allTicks.filter(tick => tick && typeof tick.LTP === 'number' && typeof tick.Change === 'number');
 }
 
 export async function loadIndicesData(): Promise<Index[]> {
@@ -51,10 +53,10 @@ export async function loadIndicesData(): Promise<Index[]> {
     const niftyTicks = await loadAllNiftyTicks();
     
     // Use the last row for the most recent tick data
-    const latestTick = niftyTicks[niftyTicks.length - 1];
+    const latestTick = niftyTicks.length > 0 ? niftyTicks[niftyTicks.length - 1] : null;
 
     if (!latestTick) {
-        console.warn("nifty_tick.csv is empty or invalid. Using fallback data.");
+        console.warn("nifty_tick.csv is empty or contains no valid data. Using fallback data.");
         // Use a default Nifty50 object if the file is empty
          return [
             { symbol: 'NIFTY 50', name: 'NIFTY 50', price: 22500, change: 150.75, changePercent: 0.67, prevPrice: 22349.25 },
@@ -62,8 +64,8 @@ export async function loadIndicesData(): Promise<Index[]> {
         ];
     }
 
-    const price = latestTick.LTP || 0;
-    const change = latestTick.Change || 0;
+    const price = latestTick.LTP;
+    const change = latestTick.Change;
     const prevPrice = price - change;
     const changePercent = prevPrice !== 0 ? (change / prevPrice) * 100 : 0;
 
