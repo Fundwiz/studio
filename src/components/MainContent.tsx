@@ -98,7 +98,7 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                         <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
                             <TableRow>
                                 <TableHead className='p-2 text-center text-green-400 font-bold' colSpan={4}>CALLS</TableHead>
-                                <TableHead className='p-2 text-center border-l border-r'>STRIKE</TableHead>
+                                <TableHead className='p-2 text-center border-l border-r' colSpan={3}>STRIKE &amp; PCR</TableHead>
                                 <TableHead className='p-2 text-center text-red-400 font-bold' colSpan={4}>PUTS</TableHead>
                             </TableRow>
                             <TableRow>
@@ -106,7 +106,9 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 <TableHead className='p-2'>Volume</TableHead>
                                 <TableHead className='p-2'>Chng %</TableHead>
                                 <TableHead className='p-2'>LTP</TableHead>
-                                <TableHead className="text-center p-2 font-bold border-l border-r"></TableHead>
+                                <TableHead className="text-center p-2 font-bold border-l">STRIKE</TableHead>
+                                <TableHead className="text-center p-2">OI PCR</TableHead>
+                                <TableHead className="text-center p-2 border-r">VOL PCR</TableHead>
                                 <TableHead className='p-2 text-right'>LTP</TableHead>
                                 <TableHead className='p-2 text-right'>Chng %</TableHead>
                                 <TableHead className='p-2 text-right'>Volume</TableHead>
@@ -118,6 +120,13 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 const callITM = item.call ? item.strike < underlyingPrice : false;
                                 const putITM = item.put ? item.strike > underlyingPrice : false;
                                 const isClosest = item.strike === closestStrike;
+                                const oiPcr = (item.put?.oi && item.call?.oi && item.call.oi > 0) 
+                                    ? (item.put.oi / item.call.oi).toFixed(2) 
+                                    : '-';
+                                const volPcr = (item.put?.volume && item.call?.volume && item.call.volume > 0)
+                                    ? (item.put.volume / item.call.volume).toFixed(2)
+                                    : '-';
+                                    
                                 return (
                                     <TableRow 
                                         key={item.strike} 
@@ -136,9 +145,15 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                         </TableCell>
                                         {renderLtpCell(item.call, true)}
 
-                                        {/* Strike Price */}
-                                        <TableCell className="font-bold text-center p-2 bg-card border-l border-r">
+                                        {/* Strike Price & PCR */}
+                                        <TableCell className="font-bold text-center p-2 bg-card border-l">
                                             {item.strike}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-center p-2 bg-card">
+                                            {oiPcr}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-center p-2 bg-card border-r">
+                                            {volPcr}
                                         </TableCell>
 
                                         {/* Put Data */}
