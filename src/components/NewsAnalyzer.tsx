@@ -1,5 +1,5 @@
 'use client';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ import { handleAnalyzeMarketSentiment, type FormState } from '@/app/actions';
 import { BrainCircuit, Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useActionState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -38,7 +38,7 @@ const sampleHeadline = "Economic Reforms and Strong GDP Growth Propel Nifty 50 t
 const sampleContent = "India's benchmark Nifty 50 index surged to an all-time high today, driven by a wave of investor optimism following the announcement of significant economic reforms. The government's new policies, aimed at boosting manufacturing and simplifying tax structures, have been widely praised by market analysts. This, combined with a stronger-than-expected GDP growth forecast, has solidified confidence in the Indian market's trajectory. Foreign institutional investors have also shown renewed interest, with significant inflows recorded over the past week. Experts predict that if this momentum continues, the Nifty 50 could see further gains in the coming quarter.";
 
 export function MarketSentimentAnalyzer() {
-  const [state, formAction] = useFormState(handleAnalyzeMarketSentiment, initialState);
+  const [state, formAction] = useActionState(handleAnalyzeMarketSentiment, initialState);
   const { toast } = useToast();
 
   const [ticker, setTicker] = useState('NIFTY 50');
