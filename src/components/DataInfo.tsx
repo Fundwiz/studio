@@ -8,7 +8,8 @@ export function DataInfo() {
       <Info className="h-4 w-4 text-blue-400" />
       <AlertTitle>Demonstration Mode</AlertTitle>
       <AlertDescription>
-        This application is running with static sample data. You can provide your own historical data by editing the contents of `src/lib/mock-data.ts`.
+        This application is running with static sample data from CSV files. You can provide your own historical data by editing the files in the 
+        <code className='mx-1 p-1 text-xs bg-muted rounded-sm'>src/data</code> directory.
       </AlertDescription>
     </Alert>
   );
