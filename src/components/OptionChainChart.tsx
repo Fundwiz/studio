@@ -224,8 +224,8 @@ export function OptionChainChart({
                     fontSize: 12,
                 }}
               />
-               <Line dataKey="dummySupport" name={`Support @ ${support}`} stroke={chartConfig.support.color} strokeDasharray="3 3" visibility="hidden" />
-               <Line dataKey="dummyResistance" name={`Resistance @ ${resistance}`} stroke={chartConfig.resistance.color} strokeDasharray="3 3" visibility="hidden" />
+               <Line yAxisId="left" dataKey="dummySupport" name={`Support @ ${support}`} stroke={chartConfig.support.color} strokeDasharray="3 3" visibility="hidden" />
+               <Line yAxisId="left" dataKey="dummyResistance" name={`Resistance @ ${resistance}`} stroke={chartConfig.resistance.color} strokeDasharray="3 3" visibility="hidden" />
             </ComposedChart>
           </ResponsiveContainer>
         </ChartContainer>
