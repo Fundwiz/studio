@@ -25,6 +25,8 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import type { OptionChain } from '@/lib/types';
+import { calculateMaxPain } from '@/lib/utils';
+import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 
 const chartConfig = {
   payoff: {
@@ -34,56 +36,37 @@ const chartConfig = {
   maxPain: {
     label: 'Max Pain',
     color: 'hsl(var(--destructive))',
+  },
+  prevMaxPain: {
+    label: 'Prev. Max Pain',
+    color: 'hsl(var(--accent))',
   }
 } satisfies ChartConfig;
 
 export function MaxPainChart({
   optionChain,
+  maxPainHistory,
 }: {
   optionChain: OptionChain | null;
+  maxPainHistory: { timestamp: number; strike: number; }[];
 }) {
   const { chartData, maxPainStrike, strikes } = useMemo(() => {
-    if (!optionChain || !optionChain.calls.length || !optionChain.puts.length) {
-      return { chartData: [], maxPainStrike: 0, strikes: [] };
-    }
-
-    const { calls, puts } = optionChain;
-    const allStrikes = [...new Set([...calls.map(c => c.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
-    
-    if (allStrikes.length === 0) {
-      return { chartData: [], maxPainStrike: 0, strikes: [] };
-    }
-
-    const payoffData = allStrikes.map(expiryStrike => {
-      let totalPayoff = 0;
-
-      // Calculate total loss for option writers (which is option buyers' gain)
-      calls.forEach(call => {
-        if (call.strike < expiryStrike) {
-          totalPayoff += (expiryStrike - call.strike) * call.oi;
-        }
-      });
-
-      puts.forEach(put => {
-        if (put.strike > expiryStrike) {
-          totalPayoff += (put.strike - expiryStrike) * put.oi;
-        }
-      });
-
-      return { strike: expiryStrike, payoff: totalPayoff };
-    });
-
-    let minPayoff = Infinity;
-    let maxPainStrike = 0;
-    payoffData.forEach(item => {
-      if (item.payoff < minPayoff) {
-        minPayoff = item.payoff;
-        maxPainStrike = item.strike;
-      }
-    });
-
-    return { chartData: payoffData, maxPainStrike, strikes: allStrikes };
+    return calculateMaxPain(optionChain);
   }, [optionChain]);
+
+  const { change, previousStrike } = useMemo(() => {
+      if (maxPainHistory.length < 2) {
+          return { change: 0, previousStrike: 0 };
+      }
+      const currentStrike = maxPainHistory[maxPainHistory.length - 1].strike;
+      const oldestStrikeInWindow = maxPainHistory[0].strike;
+
+      if (currentStrike !== oldestStrikeInWindow) {
+          return { change: currentStrike - oldestStrikeInWindow, previousStrike: oldestStrikeInWindow };
+      }
+      return { change: 0, previousStrike: 0 };
+  }, [maxPainHistory]);
+
 
   if (!optionChain || chartData.length === 0) {
     return (
@@ -103,12 +86,24 @@ export function MaxPainChart({
 
   const strikeRange = strikes.length > 0 ? `(${strikes[0]}-${strikes[strikes.length - 1]})` : '';
 
+  const ChangeIndicator = () => {
+    if (change > 0) return <ArrowUp className="inline-block h-4 w-4 text-green-500" />;
+    if (change < 0) return <ArrowDown className="inline-block h-4 w-4 text-red-500" />;
+    return <Minus className="inline-block h-4 w-4 text-muted-foreground" />;
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Max Pain Visualization {strikeRange}</CardTitle>
-        <CardDescription>
-          The strike price with the minimum financial loss for option writers. Max pain is at ₹{maxPainStrike}.
+        <CardDescription className="flex items-center gap-2">
+            <span>The Max Pain point is currently at <b className="text-primary">₹{maxPainStrike}</b>.</span>
+            {change !== 0 && (
+                <span className="flex items-center text-xs text-muted-foreground">
+                    <ChangeIndicator />
+                    Shifted by {change} points from {previousStrike} in the last hour.
+                </span>
+            )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -153,9 +148,20 @@ export function MaxPainChart({
                 strokeDasharray="3 3"
                 ifOverflow="visible"
               />
-              {/* Dummy line for the legend */}
-              <Line dataKey="dummy" name={`Max Pain @ ${maxPainStrike}`} stroke={chartConfig.maxPain.color} strokeDasharray="3 3" visibility="hidden" />
+              {change !== 0 && previousStrike !== maxPainStrike && (
+                 <ReferenceLine
+                    x={previousStrike}
+                    stroke={chartConfig.prevMaxPain.color}
+                    strokeDasharray="8 4"
+                    ifOverflow="visible"
+                 />
+              )}
 
+              {/* Dummy lines for the legend */}
+              <Line dataKey="dummyMaxPain" name={`Max Pain @ ${maxPainStrike}`} stroke={chartConfig.maxPain.color} strokeDasharray="3 3" visibility="hidden" />
+               {change !== 0 && previousStrike !== maxPainStrike && (
+                   <Line dataKey="dummyPrevMaxPain" name={`Prev. Max Pain @ ${previousStrike}`} stroke={chartConfig.prevMaxPain.color} strokeDasharray="8 4" visibility="hidden" />
+               )}
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>

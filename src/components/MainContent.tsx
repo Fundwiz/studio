@@ -123,8 +123,8 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
                                 const callITM = item.call ? item.strike < underlyingPrice : false;
                                 const putITM = item.put ? item.strike > underlyingPrice : false;
 
-                                const callBgClass = isClosest ? "bg-accent/20" : callITM ? "bg-green-500/10" : "";
-                                const putBgClass = isClosest ? "bg-accent/20" : putITM ? "bg-red-500/10" : "";
+                                const callBgClass = isClosest ? "bg-accent/20" : callITM ? "bg-green-900/50" : "";
+                                const putBgClass = isClosest ? "bg-accent/20" : putITM ? "bg-red-900/50" : "";
                                 const neutralBgClass = isClosest ? "bg-accent/20" : "";
 
                                 const callLtpChanged = item.call && item.call.ltp !== item.call.prevLtp && item.call.prevLtp !== undefined;
@@ -204,9 +204,10 @@ const OptionChainTable = ({ optionChain }: { optionChain: OptionChainType | null
 type MainContentProps = {
     indices: Index[];
     optionChain: OptionChainType | null;
+    maxPainHistory: { timestamp: number; strike: number; }[];
 }
 
-export function MainContent({ indices, optionChain }: MainContentProps) {
+export function MainContent({ indices, optionChain, maxPainHistory }: MainContentProps) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
       <div className="xl:col-span-4 space-y-6">
@@ -220,7 +221,7 @@ export function MainContent({ indices, optionChain }: MainContentProps) {
           </CardContent>
         </Card>
         <OptionChainChart optionChain={optionChain} />
-        <MaxPainChart optionChain={optionChain} />
+        <MaxPainChart optionChain={optionChain} maxPainHistory={maxPainHistory} />
         <OptionChainTable optionChain={optionChain} />
       </div>
       <div className="xl:col-span-1">

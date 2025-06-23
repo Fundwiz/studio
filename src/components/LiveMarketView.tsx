@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { StockRibbon } from '@/components/StockRibbon';
 import { MainContent } from '@/components/MainContent';
 import type { Index, OptionChain, NiftyTick } from '@/lib/types';
+import { calculateMaxPain } from '@/lib/utils';
 
 type LiveMarketViewProps = {
   initialIndices: Index[];
@@ -19,6 +20,7 @@ export function LiveMarketView({
   const [indices, setIndices] = useState<Index[]>(initialIndices);
   const [optionChain, setOptionChain] = useState<OptionChain | null>(initialOptionChain);
   const [tickIndex, setTickIndex] = useState(0);
+  const [maxPainHistory, setMaxPainHistory] = useState<{ timestamp: number; strike: number }[]>([]);
 
   useEffect(() => {
     const niftyTicksCount = niftyTicks.length;
@@ -56,11 +58,10 @@ export function LiveMarketView({
             }
         }
         
-        // Update Option Chain by randomly updating one contract in the full chain
+        // Update Option Chain and Max Pain History
         setOptionChain(prevChain => {
             if (!prevChain) return null;
 
-            // Deep copy to avoid direct state mutation, ensuring re-render
             const newChain = JSON.parse(JSON.stringify(prevChain));
 
             if (newChain.calls.length > 0) {
@@ -68,7 +69,7 @@ export function LiveMarketView({
                 const callToUpdate = newChain.calls[callIndexToUpdate];
                 if (callToUpdate) {
                     callToUpdate.prevLtp = callToUpdate.ltp;
-                    callToUpdate.ltp += (Math.random() - 0.5) * (callToUpdate.ltp * 0.01); // 1% fluctuation
+                    callToUpdate.ltp += (Math.random() - 0.5) * (callToUpdate.ltp * 0.01);
                     callToUpdate.ltp = Math.max(0.05, parseFloat(callToUpdate.ltp.toFixed(2)));
                 }
             }
@@ -78,15 +79,32 @@ export function LiveMarketView({
                 const putToUpdate = newChain.puts[putIndexToUpdate];
                 if (putToUpdate) {
                     putToUpdate.prevLtp = putToUpdate.ltp;
-                    putToUpdate.ltp += (Math.random() - 0.5) * (putToUpdate.ltp * 0.01); // 1% fluctuation
+                    putToUpdate.ltp += (Math.random() - 0.5) * (putToUpdate.ltp * 0.01);
                     putToUpdate.ltp = Math.max(0.05, parseFloat(putToUpdate.ltp.toFixed(2)));
                 }
             }
             
-            // Update the underlying price from the latest index data
             const nifty = indices.find(i => i.symbol === 'NIFTY 50');
             if (nifty) {
                 newChain.underlyingPrice = nifty.price;
+            }
+
+            // Calculate Max Pain and update history
+            const { maxPainStrike } = calculateMaxPain(newChain);
+            if (maxPainStrike > 0) {
+                 setMaxPainHistory(prevHistory => {
+                    const now = Date.now();
+                    const oneHourAgo = now - 60 * 60 * 1000;
+                    
+                    const lastEntry = prevHistory[prevHistory.length - 1];
+                    // Only add a new entry if the strike has changed to avoid redundant data
+                    if (!lastEntry || lastEntry.strike !== maxPainStrike) {
+                        const newHistoryEntry = { timestamp: now, strike: maxPainStrike };
+                        const updatedHistory = [...prevHistory, newHistoryEntry];
+                        return updatedHistory.filter(item => item.timestamp >= oneHourAgo);
+                    }
+                    return prevHistory.filter(item => item.timestamp >= oneHourAgo);
+                });
             }
 
             return newChain;
@@ -103,7 +121,7 @@ export function LiveMarketView({
     <>
       <StockRibbon stocks={indices} />
       <main className="flex-1 p-4 md:p-8 container mx-auto">
-        <MainContent indices={indices} optionChain={optionChain} />
+        <MainContent indices={indices} optionChain={optionChain} maxPainHistory={maxPainHistory} />
       </main>
     </>
   );
