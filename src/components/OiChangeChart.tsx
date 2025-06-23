@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import {
   Card,
@@ -28,72 +29,83 @@ import type { OptionChain } from '@/lib/types';
 
 const chartConfig = {
   callChngOi: {
-    label: 'Call OI Chng',
-    color: 'hsl(var(--chart-1))',
+    label: 'Call OI Change',
+    color: 'hsl(var(--chart-3))', // Blueish
   },
   putChngOi: {
-    label: 'Put OI Chng',
+    label: 'Put OI Change',
+    color: 'hsl(var(--chart-2))', // Green
+  },
+  callLtpPctChng: {
+    label: 'Call LTP%',
+    color: 'hsl(var(--chart-5))', // Pink/Red
+  },
+  putLtpPctChng: {
+    label: 'Put LTP%',
+    color: 'hsl(var(--chart-4))', // Yellow/Orange
+  },
+  support: {
+    label: 'Support',
     color: 'hsl(var(--chart-2))',
   },
-  callChng: {
-    label: 'Call Price Chng',
-    color: 'hsl(var(--chart-4))',
-  },
-  putChng: {
-    label: 'Put Price Chng',
-    color: 'hsl(var(--chart-5))',
+  resistance: {
+    label: 'Resistance',
+    color: 'hsl(var(--chart-1))',
   },
 } satisfies ChartConfig;
+
 
 export function OiChangeChart({
   optionChain,
 }: {
   optionChain: OptionChain | null;
 }) {
-  const { chartData, range } = useMemo(() => {
-    if (!optionChain) return { chartData: [], range: [0,0] };
+  const { chartData, range, resistance1, resistance2, support1, support2 } = useMemo(() => {
+    if (!optionChain) return { chartData: [], range: [0, 0], resistance1: 0, resistance2: 0, support1: 0, support2: 0 };
 
-    const { calls, puts, underlyingPrice } = optionChain;
+    const { calls, puts } = optionChain;
     const strikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])].sort((a, b) => a - b);
     
-    const atmStrike = strikes.reduce((prev, curr) =>
-        Math.abs(curr - underlyingPrice) < Math.abs(prev - underlyingPrice) ? curr : prev
-    , 0);
-
-    if (atmStrike === 0) {
-        return { chartData: [], range: [0,0] };
-    }
-
-    const atmIndex = strikes.findIndex(s => s === atmStrike);
-    const startIndex = Math.max(0, atmIndex - 10);
-    const endIndex = Math.min(strikes.length, atmIndex + 11);
-    const slicedStrikes = strikes.slice(startIndex, endIndex);
-
     const callMap = new Map(calls.map((c) => [c.strike, c]));
     const putMap = new Map(puts.map((p) => [p.strike, p]));
 
-    const processedData = slicedStrikes.map((strike) => {
+    const processedData = strikes.map((strike) => {
       const call = callMap.get(strike);
       const put = putMap.get(strike);
+
+      const callPrevLtp = call && call.chng ? call.ltp - call.chng : 0;
+      const callLtpPctChng = call && callPrevLtp !== 0 ? (call.chng / callPrevLtp) * 100 : 0;
+
+      const putPrevLtp = put && put.chng ? put.ltp - put.chng : 0;
+      const putLtpPctChng = put && putPrevLtp !== 0 ? (put.chng / putPrevLtp) * 100 : 0;
+      
       return {
         strike: strike,
         callChngOi: call?.chngInOI ?? 0,
         putChngOi: put?.chngInOI ?? 0,
-        callChng: call?.chng ?? 0,
-        putChng: put?.chng ?? 0,
+        callLtpPctChng: parseFloat(callLtpPctChng.toFixed(2)),
+        putLtpPctChng: parseFloat(putLtpPctChng.toFixed(2)),
       };
     });
 
-    const rangeText = slicedStrikes.length > 0 ? [slicedStrikes[0], slicedStrikes[slicedStrikes.length-1]] : [0,0];
+    const callsByOi = [...calls].sort((a, b) => b.oi - a.oi);
+    const putsByOi = [...puts].sort((a, b) => b.oi - a.oi);
 
-    return { chartData: processedData, range: rangeText };
+    const resistance1 = callsByOi[0]?.strike ?? 0;
+    const resistance2 = callsByOi[1]?.strike ?? 0;
+    const support1 = putsByOi[0]?.strike ?? 0;
+    const support2 = putsByOi[1]?.strike ?? 0;
+
+    const rangeText = strikes.length > 0 ? [strikes[0], strikes[strikes.length - 1]] : [0, 0];
+
+    return { chartData: processedData, range: rangeText, resistance1, resistance2, support1, support2 };
   }, [optionChain]);
 
   if (!optionChain || chartData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>OI & Price Change Analysis</CardTitle>
+          <CardTitle>Change in OI & LTP%</CardTitle>
           <CardDescription>No data available to display chart.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,9 +120,9 @@ export function OiChangeChart({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>OI & Price Change Analysis ({range[0]}-{range[1]})</CardTitle>
+        <CardTitle>Change in OI & LTP% ({range[0]}-{range[1]})</CardTitle>
         <CardDescription>
-          Visual analysis of Change in Open Interest and Change in Price across strike prices. This helps in identifying buildups.
+          Visual analysis of Open Interest and Price changes across strike prices.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -134,7 +146,7 @@ export function OiChangeChart({
                 tickLine={false}
                 axisLine={false}
                 label={{ value: 'Change in OI', angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' } }}
-                tickFormatter={(value) => `${(value / 1e3).toFixed(1)}K`}
+                tickFormatter={(value) => `${(value / 1e5).toFixed(1)}L`}
               />
               <YAxis
                 yAxisId="right"
@@ -143,41 +155,69 @@ export function OiChangeChart({
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                label={{ value: 'Price Change (₹)', angle: 90, position: 'insideRight', offset: 10, style: { textAnchor: 'middle' } }}
+                label={{ value: 'LTP % Change', angle: 90, position: 'insideRight', offset: 10, style: { textAnchor: 'middle' } }}
                 tickFormatter={(value) => value.toFixed(0)}
               />
-              <Tooltip content={<ChartTooltipContent />} />
+              <Tooltip 
+                content={<ChartTooltipContent 
+                    formatter={(value, name) => {
+                        const config = chartConfig[name as keyof typeof chartConfig];
+                        const label = config ? config.label : name;
+                        if (name === 'callChngOi' || name === 'putChngOi') {
+                            return [`${(Number(value) / 1e5).toFixed(2)}L`, label]
+                        }
+                        if (name === 'callLtpPctChng' || name === 'putLtpPctChng') {
+                            return [`${Number(value).toFixed(2)}%`, label]
+                        }
+                        return [value, name]
+                    }}
+                    labelFormatter={(label) => `Strike: ${label}`}
+                />}
+              />
               <Legend />
               <Bar
                 yAxisId="left"
                 dataKey="callChngOi"
                 name={chartConfig.callChngOi.label}
-                fill={chartConfig.callChngOi.color}
+                fill="var(--color-callChngOi)"
               />
               <Bar
                 yAxisId="left"
                 dataKey="putChngOi"
                 name={chartConfig.putChngOi.label}
-                fill={chartConfig.putChngOi.color}
+                fill="var(--color-putChngOi)"
               />
               <Line
                 yAxisId="right"
                 type="monotone"
-                dataKey="callChng"
-                name={chartConfig.callChng.label}
-                stroke={chartConfig.callChng.color}
+                dataKey="callLtpPctChng"
+                name={chartConfig.callLtpPctChng.label}
+                stroke="var(--color-callLtpPctChng)"
+                strokeDasharray="5 5"
                 strokeWidth={2}
                 dot={false}
               />
               <Line
                 yAxisId="right"
                 type="monotone"
-                dataKey="putChng"
-                name={chartConfig.putChng.label}
-                stroke={chartConfig.putChng.color}
+                dataKey="putLtpPctChng"
+                name={chartConfig.putLtpPctChng.label}
+                stroke="var(--color-putLtpPctChng)"
+                strokeDasharray="5 5"
                 strokeWidth={2}
                 dot={false}
               />
+
+             <ReferenceLine yAxisId="left" x={support1} stroke={chartConfig.support.color} strokeDasharray="3 3" ifOverflow="visible" label={{ value: `S1`, position: 'insideTopLeft', fill: chartConfig.support.color, fontSize: 12 }} />
+             <ReferenceLine yAxisId="left" x={support2} stroke={chartConfig.support.color} strokeDasharray="8 4" ifOverflow="visible" label={{ value: `S2`, position: 'insideTopLeft', dy: 15, fill: chartConfig.support.color, fontSize: 12 }} />
+             <ReferenceLine yAxisId="left" x={resistance1} stroke={chartConfig.resistance.color} strokeDasharray="3 3" ifOverflow="visible" label={{ value: `R1`, position: 'insideTopRight', fill: chartConfig.resistance.color, fontSize: 12 }} />
+             <ReferenceLine yAxisId="left" x={resistance2} stroke={chartConfig.resistance.color} strokeDasharray="8 4" ifOverflow="visible" label={{ value: `R2`, position: 'insideTopRight', dy: 15, fill: chartConfig.resistance.color, fontSize: 12 }} />
+             
+             {/* Dummy lines for legend */}
+             <Line yAxisId="right" dataKey="dummyS1" name={`Support 1 @ ${support1}`} stroke={chartConfig.support.color} strokeDasharray="3 3" visibility="hidden" />
+             <Line yAxisId="right" dataKey="dummyS2" name={`Support 2 @ ${support2}`} stroke={chartConfig.support.color} strokeDasharray="8 4" visibility="hidden" />
+             <Line yAxisId="right" dataKey="dummyR1" name={`Resistance 1 @ ${resistance1}`} stroke={chartConfig.resistance.color} strokeDasharray="3 3" visibility="hidden" />
+             <Line yAxisId="right" dataKey="dummyR2" name={`Resistance 2 @ ${resistance2}`} stroke={chartConfig.resistance.color} strokeDasharray="8 4" visibility="hidden" />
             </ComposedChart>
           </ResponsiveContainer>
         </ChartContainer>
