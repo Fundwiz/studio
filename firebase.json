@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "fundwiz-website",
+    "site": "niftypulse",
     "source": ".",
     "ignore": [
       "firebase.json",
