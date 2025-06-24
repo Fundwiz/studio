@@ -16,7 +16,7 @@ export default async function Home() {
         niftyTicks={niftyTicks}
       />
       <footer className="p-4 border-t text-center text-sm text-muted-foreground">
-        NiftyPulse &copy; {new Date().getFullYear()} - Financial data is for demonstration purposes only.
+        TickerSpark &copy; {new Date().getFullYear()} - Financial data is for demonstration purposes only.
       </footer>
     </div>
   );

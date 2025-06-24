@@ -7,7 +7,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Activity className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            NiftyPulse
+            TickerSpark
           </h1>
         </div>
       </div>
