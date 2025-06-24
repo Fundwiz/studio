@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "fundwiz-website"
+  },
+  "targets": {
+    "fundwiz-website": {
+      "hosting": {
+        "niftypulse": [
+          "niftypulse"
+        ]
+      }
+    }
   }
 }
