@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'TickerSpark',
+  title: 'NiftyPulse',
   description: 'Track Nifty and analyze option chains with AI.',
 };
 
