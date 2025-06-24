@@ -2,10 +2,6 @@
 
 If you are seeing this message by opening this file from your computer's File Explorer, you have found the correct local folder for your NiftyPulse application.
 
-**Next Steps:**
+To deploy, open a terminal, navigate to THIS FOLDER, and run `firebase deploy`.
 
-1.  Open a terminal or command prompt.
-2.  Navigate to THIS FOLDER.
-3.  Run the command: `firebase deploy`
-
-This will deploy your NiftyPulse app to the `niftypulse.firebaseapp.com` site.
+If you are having trouble, search your computer for the file named `✅✅✅_NIFTYPULSE_PROJECT_IS_HERE_✅✅✅.md`.
