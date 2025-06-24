@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "fundwiz-website",
     "source": ".",
     "ignore": [
       "firebase.json",
