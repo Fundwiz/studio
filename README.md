@@ -1,7 +1,11 @@
 # ✅✅✅ THIS IS THE NIFTYPULSE PROJECT FOLDER ✅✅✅
 
-# Firebase Studio
+If you are seeing this message by opening this file from your computer's File Explorer, you have found the correct local folder for your NiftyPulse application.
 
-This is a NextJS starter in Firebase Studio.
+**Next Steps:**
 
-To get started, take a look at src/app/page.tsx.
+1.  Open a terminal or command prompt.
+2.  Navigate to THIS FOLDER.
+3.  Run the command: `firebase deploy`
+
+This will deploy your NiftyPulse app to the `niftypulse.firebaseapp.com` site.
